@@ -64,7 +64,7 @@ export default function NewEventPage() {
           <input
             name="title"
             required
-            placeholder="Aniversário do Ryu — 3 anos"
+            placeholder="Aniversário de 3 anos"
             className="w-full rounded-md border border-gray-300 px-3 py-2"
           />
         </Field>

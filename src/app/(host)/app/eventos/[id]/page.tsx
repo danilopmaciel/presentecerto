@@ -4,6 +4,15 @@ import { createClient } from '@/lib/supabase/server';
 import { getPaymentProvider } from '@/lib/payments';
 import { formatBRL } from '@/lib/utils';
 
+const THEMES = [
+  { id: 'default', name: 'Padrão', sample: 'bg-brand-50 text-brand-900' },
+  { id: 'infantil-rosa', name: 'Infantil Rosa', sample: 'bg-pink-50 text-pink-900' },
+  { id: 'infantil-azul', name: 'Infantil Azul', sample: 'bg-sky-50 text-sky-900' },
+  { id: 'aquatico', name: 'Aquático', sample: 'bg-teal-50 text-teal-900' },
+  { id: 'safari', name: 'Safari', sample: 'bg-amber-50 text-amber-900' },
+  { id: 'principe', name: 'Príncipe / Princesa', sample: 'bg-yellow-50 text-yellow-900' }
+];
+
 export default async function EventDetailPage({
   params
 }: {
@@ -53,6 +62,7 @@ export default async function EventDetailPage({
     const supabase = await createClient();
     const title = String(formData.get('title') ?? '').trim();
     const description = String(formData.get('description') ?? '').trim();
+    const image_path = String(formData.get('image_path') ?? '').trim();
     const quota_value_cents = Math.round(Number(formData.get('quota_value') ?? 0) * 100);
     const quota_total = Number(formData.get('quota_total') ?? 1);
 
@@ -62,9 +72,18 @@ export default async function EventDetailPage({
       event_id: eventId,
       title,
       description: description || null,
+      image_path: image_path || null,
       quota_value_cents,
       quota_total
     });
+  }
+
+  async function setTheme(formData: FormData) {
+    'use server';
+    const supabase = await createClient();
+    const theme = String(formData.get('theme') ?? 'default');
+    if (!THEMES.find((t) => t.id === theme)) return;
+    await supabase.from('events').update({ theme }).eq('id', eventId);
   }
 
   async function generatePlanPix() {
@@ -135,10 +154,11 @@ export default async function EventDetailPage({
 
   const site = process.env.NEXT_PUBLIC_SITE_URL ?? '';
   const publicUrl = `${site}/e/${event.slug}`;
+  const isPublished = event.status === 'published';
 
   return (
     <div className="space-y-8">
-      <div className="flex items-start justify-between">
+      <div className="flex items-start justify-between gap-4">
         <div>
           <Link href="/app" className="text-sm text-gray-500 hover:underline">
             ← Meus eventos
@@ -149,17 +169,45 @@ export default async function EventDetailPage({
             {event.location_text ? ` · ${event.location_text}` : ''}
           </p>
         </div>
-        {event.status === 'published' && (
-          <a
-            href={publicUrl}
-            target="_blank"
-            rel="noreferrer"
-            className="rounded-md border border-brand-300 bg-white px-3 py-1.5 text-sm text-brand-700 hover:bg-brand-50"
-          >
-            Abrir página pública ↗
-          </a>
-        )}
+        <a
+          href={publicUrl}
+          target="_blank"
+          rel="noreferrer"
+          className="shrink-0 rounded-md border border-brand-300 bg-white px-3 py-1.5 text-sm text-brand-700 hover:bg-brand-50"
+        >
+          {isPublished ? 'Abrir página pública ↗' : 'Pré-visualizar página ↗'}
+        </a>
       </div>
+
+      {/* Tema (apenas plano temático) */}
+      {event.plan_tier === 'themed' && (
+        <section className="rounded-lg border border-gray-200 bg-white p-6">
+          <h2 className="font-semibold">Tema da página</h2>
+          <p className="mt-1 text-sm text-gray-600">
+            Escolha como a página dos convidados vai parecer. Você pode trocar quantas vezes quiser.
+          </p>
+          <form action={setTheme} className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3">
+            {THEMES.map((t) => {
+              const selected = (event.theme ?? 'default') === t.id;
+              return (
+                <button
+                  key={t.id}
+                  type="submit"
+                  name="theme"
+                  value={t.id}
+                  className={`rounded-md border-2 p-3 text-left transition ${
+                    selected ? 'border-brand-500' : 'border-gray-200 hover:border-gray-300'
+                  }`}
+                >
+                  <div className={`mb-2 h-10 w-full rounded ${t.sample}`} />
+                  <div className="text-sm font-medium">{t.name}</div>
+                  {selected && <div className="text-xs text-brand-600">Selecionado</div>}
+                </button>
+              );
+            })}
+          </form>
+        </section>
+      )}
 
       {/* Pagamento do plano */}
       {event.plan_payment_status !== 'paid' && event.plan_payment_status !== 'waived' && (
@@ -231,13 +279,19 @@ export default async function EventDetailPage({
               )
               .reduce((s, p) => s + p.quotas, 0) ?? 0;
             return (
-              <div key={g.id} className="rounded-md border border-gray-200 bg-white p-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <div className="font-medium">{g.title}</div>
-                    <div className="text-sm text-gray-500">
-                      {formatBRL(g.quota_value_cents)} / cota — {sold} de {g.quota_total} vendidas
-                    </div>
+              <div key={g.id} className="flex items-center gap-4 rounded-md border border-gray-200 bg-white p-4">
+                {g.image_path && (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={g.image_path}
+                    alt={g.title}
+                    className="h-16 w-16 shrink-0 rounded object-cover"
+                  />
+                )}
+                <div className="min-w-0 flex-1">
+                  <div className="font-medium">{g.title}</div>
+                  <div className="text-sm text-gray-500">
+                    {formatBRL(g.quota_value_cents)} / cota — {sold} de {g.quota_total} vendidas
                   </div>
                 </div>
               </div>
@@ -249,6 +303,15 @@ export default async function EventDetailPage({
           <div className="text-sm font-medium">Adicionar presente</div>
           <input name="title" required placeholder="Ex.: Triciclo — cotas de R$ 50" className="w-full rounded-md border border-gray-300 px-3 py-2" />
           <input name="description" placeholder="Descrição opcional" className="w-full rounded-md border border-gray-300 px-3 py-2" />
+          <input
+            name="image_path"
+            type="url"
+            placeholder="URL da foto (cole link da loja, Drive ou Imgur)"
+            className="w-full rounded-md border border-gray-300 px-3 py-2"
+          />
+          <p className="-mt-1 text-xs text-gray-500">
+            Cole o endereço de uma imagem pública. Em breve teremos upload direto.
+          </p>
           <div className="grid grid-cols-2 gap-3">
             <label className="block text-sm">
               Valor da cota (R$)

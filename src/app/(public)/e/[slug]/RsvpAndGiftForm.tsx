@@ -8,6 +8,7 @@ type Gift = {
   id: string;
   title: string;
   description: string | null;
+  image_path: string | null;
   quota_value_cents: number;
   quota_total: number;
   reserved: number;
@@ -176,8 +177,16 @@ function GiftCard({
 
   return (
     <div className="rounded-lg bg-white p-4 shadow-sm">
-      <div className="flex items-center justify-between">
-        <div>
+      <div className="flex items-center gap-4">
+        {gift.image_path && (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={gift.image_path}
+            alt={gift.title}
+            className="h-20 w-20 shrink-0 rounded-md object-cover"
+          />
+        )}
+        <div className="min-w-0 flex-1">
           <div className="font-medium">{gift.title}</div>
           {gift.description && <div className="text-sm text-gray-600">{gift.description}</div>}
           <div className="mt-1 text-sm text-gray-500">
@@ -187,12 +196,12 @@ function GiftCard({
         {!soldOut ? (
           <button
             onClick={() => setOpen((v) => !v)}
-            className="rounded-md bg-brand-500 px-3 py-1.5 text-sm text-white hover:bg-brand-600"
+            className="shrink-0 rounded-md bg-brand-500 px-3 py-1.5 text-sm text-white hover:bg-brand-600"
           >
             Presentear
           </button>
         ) : (
-          <span className="rounded bg-gray-100 px-2 py-1 text-xs text-gray-500">Esgotado</span>
+          <span className="shrink-0 rounded bg-gray-100 px-2 py-1 text-xs text-gray-500">Esgotado</span>
         )}
       </div>
 

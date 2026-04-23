@@ -5,6 +5,15 @@ import { RsvpAndGiftForm } from './RsvpAndGiftForm';
 
 export const dynamic = 'force-dynamic';
 
+const THEME_STYLES: Record<string, { page: string; title: string }> = {
+  default: { page: 'bg-brand-50', title: 'text-brand-900' },
+  'infantil-rosa': { page: 'bg-pink-50', title: 'text-pink-900' },
+  'infantil-azul': { page: 'bg-sky-50', title: 'text-sky-900' },
+  aquatico: { page: 'bg-teal-50', title: 'text-teal-900' },
+  safari: { page: 'bg-amber-50', title: 'text-amber-900' },
+  principe: { page: 'bg-yellow-50', title: 'text-yellow-900' }
+};
+
 export default async function PublicEventPage({
   params
 }: {
@@ -12,17 +21,25 @@ export default async function PublicEventPage({
 }) {
   const { slug } = await params;
   const supabase = await createClient();
+  const {
+    data: { user }
+  } = await supabase.auth.getUser();
+
   const { data: event } = await supabase
     .from('events')
-    .select('id, slug, title, description, starts_at, location_text, location_maps_url, theme, status')
+    .select('id, slug, owner_id, title, description, starts_at, location_text, location_maps_url, theme, status')
     .eq('slug', slug)
     .single();
 
-  if (!event || event.status !== 'published') notFound();
+  if (!event) notFound();
+
+  // Permite preview pro dono mesmo se ainda não publicou
+  const isOwnerPreview = !!user && event.owner_id === user.id;
+  if (event.status !== 'published' && !isOwnerPreview) notFound();
 
   const { data: gifts } = await supabase
     .from('gift_items')
-    .select('id, title, description, quota_value_cents, quota_total')
+    .select('id, title, description, image_path, quota_value_cents, quota_total')
     .eq('event_id', event.id)
     .order('sort_order', { ascending: true });
 
@@ -45,11 +62,19 @@ export default async function PublicEventPage({
     available: g.quota_total - (reservedMap.get(g.id) ?? 0)
   }));
 
+  const theme = THEME_STYLES[event.theme ?? 'default'] ?? THEME_STYLES.default;
+  const isPreview = event.status !== 'published';
+
   return (
-    <main className="min-h-screen bg-brand-50">
+    <main className={`min-h-screen ${theme.page}`}>
+      {isPreview && (
+        <div className="bg-yellow-400 px-4 py-2 text-center text-sm font-medium text-yellow-900">
+          🚧 Pré-visualização — esta página ainda não foi publicada para os convidados.
+        </div>
+      )}
       <div className="mx-auto max-w-2xl px-6 py-10">
         <header className="text-center">
-          <h1 className="text-3xl font-bold text-brand-900">{event.title}</h1>
+          <h1 className={`text-3xl font-bold ${theme.title}`}>{event.title}</h1>
           <p className="mt-2 text-gray-700">
             {new Date(event.starts_at).toLocaleString('pt-BR', {
               day: '2-digit',
