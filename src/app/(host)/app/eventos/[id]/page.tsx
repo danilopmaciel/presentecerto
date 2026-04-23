@@ -150,11 +150,27 @@ export default async function EventDetailPage({
       .eq('id', eventId);
   }
 
+  async function waiveAndPublish() {
+    'use server';
+    // Modo teste: ignora pagamento e publica direto. Só funciona se NEXT_PUBLIC_TEST_MODE=true.
+    if (process.env.NEXT_PUBLIC_TEST_MODE !== 'true') return;
+    const supabase = await createClient();
+    await supabase
+      .from('events')
+      .update({
+        plan_payment_status: 'waived',
+        status: 'published',
+        published_at: new Date().toISOString()
+      })
+      .eq('id', eventId);
+  }
+
   // --- Render ----------------------------------------------------------------
 
   const site = process.env.NEXT_PUBLIC_SITE_URL ?? '';
   const publicUrl = `${site}/e/${event.slug}`;
   const isPublished = event.status === 'published';
+  const testMode = process.env.NEXT_PUBLIC_TEST_MODE === 'true';
 
   return (
     <div className="space-y-8">
@@ -206,6 +222,26 @@ export default async function EventDetailPage({
               );
             })}
           </form>
+        </section>
+      )}
+
+      {/* Modo teste — pular pagamento (gated por NEXT_PUBLIC_TEST_MODE=true) */}
+      {testMode && !isPublished && (
+        <section className="rounded-lg border border-purple-300 bg-purple-50 p-4">
+          <div className="flex items-center justify-between gap-4">
+            <div>
+              <div className="text-sm font-semibold text-purple-900">🧪 Modo teste ativo</div>
+              <div className="text-xs text-purple-800">
+                Pula o pagamento e publica direto. Remova <code>NEXT_PUBLIC_TEST_MODE</code> da
+                Vercel pra desativar.
+              </div>
+            </div>
+            <form action={waiveAndPublish}>
+              <button className="shrink-0 rounded-md bg-purple-600 px-3 py-1.5 text-sm text-white hover:bg-purple-700">
+                Pular pagamento e publicar
+              </button>
+            </form>
+          </div>
         </section>
       )}
 
