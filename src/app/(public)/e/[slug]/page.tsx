@@ -58,23 +58,36 @@ export default async function PublicEventPage({
   const themeId = event.plan_tier === 'themed' ? event.theme ?? 'default' : 'default';
   const theme = getTheme(themeId);
   const Decoration = theme.Decoration;
+  const HeroArt = theme.HeroArt;
   const isPreview = event.status !== 'published';
 
   return (
-    <main
-      className={`relative min-h-screen ${theme.pageBg}`}
-      style={theme.pattern ? { backgroundImage: theme.pattern } : undefined}
-    >
+    <main className={`relative min-h-screen overflow-hidden ${theme.pageBg}`}>
+      {theme.pattern && (
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-0 opacity-50"
+          style={{ backgroundImage: theme.pattern }}
+        />
+      )}
       {isPreview && (
-        <div className="bg-yellow-400 px-4 py-2 text-center text-sm font-medium text-yellow-900">
+        <div className="relative bg-yellow-400 px-4 py-2 text-center text-sm font-medium text-yellow-900">
           🚧 Pré-visualização — esta página ainda não foi publicada para os convidados.
         </div>
       )}
       <div className="relative mx-auto max-w-2xl px-6 py-10">
         {Decoration && <Decoration />}
 
+        {HeroArt && (
+          <div className="mb-4">
+            <HeroArt />
+          </div>
+        )}
+
         <header className="relative text-center">
-          <h1 className={`text-3xl font-bold drop-shadow-sm ${theme.titleColor}`}>{event.title}</h1>
+          <h1 className={`text-4xl font-extrabold tracking-tight drop-shadow-sm ${theme.titleColor}`}>
+            {event.title}
+          </h1>
           <p className="mt-2 text-gray-700">
             {new Date(event.starts_at).toLocaleString('pt-BR', {
               day: '2-digit',
@@ -100,7 +113,12 @@ export default async function PublicEventPage({
           )}
         </header>
 
-        <RsvpAndGiftForm eventId={event.id} gifts={giftsWithAvail} />
+        <RsvpAndGiftForm
+          eventId={event.id}
+          gifts={giftsWithAvail}
+          cardClass={theme.cardClass}
+          accent={theme.accent}
+        />
 
         <footer className="mt-12 text-center text-xs text-gray-500">
           Página criada com{' '}

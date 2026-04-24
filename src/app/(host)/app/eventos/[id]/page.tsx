@@ -1,11 +1,14 @@
 import Link from 'next/link';
 import { redirect, notFound } from 'next/navigation';
+import { revalidatePath } from 'next/cache';
 import QRCode from 'qrcode';
 import { createClient } from '@/lib/supabase/server';
 import { getPaymentProvider } from '@/lib/payments';
 import { formatBRL } from '@/lib/utils';
 import { THEMES } from '@/lib/themes';
 import { CopyButton } from '@/components/CopyButton';
+import { ThemePicker } from '@/components/ThemePicker';
+import { DeleteEventButton } from '@/components/DeleteEventButton';
 
 export default async function EventDetailPage({
   params
@@ -42,12 +45,18 @@ export default async function EventDetailPage({
 
   const { data: purchases } = await supabase
     .from('gift_purchases')
-    .select('id, buyer_name, quotas, amount_cents, status, paid_at, gift_item_id')
+    .select('id, buyer_name, buyer_email, quotas, amount_cents, status, paid_at, gift_item_id, created_at')
     .eq('event_id', event.id)
     .order('created_at', { ascending: false });
 
-  const totalArrecadado =
-    purchases?.filter((p) => p.status === 'paid').reduce((s, p) => s + p.amount_cents, 0) ?? 0;
+  const giftTitleById = new Map((gifts ?? []).map((g) => [g.id, g.title]));
+
+  const paidPurchases = purchases?.filter((p) => p.status === 'paid') ?? [];
+  const pendingConfirmation = purchases?.filter((p) => p.status === 'paid_claimed') ?? [];
+
+  const totalArrecadado = paidPurchases.reduce((s, p) => s + p.amount_cents, 0);
+  const cotasPagas = paidPurchases.reduce((s, p) => s + p.quotas, 0);
+  const aguardandoConfirmacao = pendingConfirmation.reduce((s, p) => s + p.amount_cents, 0);
 
   // --- Server Actions --------------------------------------------------------
 
@@ -72,12 +81,86 @@ export default async function EventDetailPage({
     });
   }
 
-  async function setTheme(formData: FormData) {
+  async function setTheme(themeId: string) {
     'use server';
     const supabase = await createClient();
-    const theme = String(formData.get('theme') ?? 'default');
-    if (!THEMES.find((t) => t.id === theme)) return;
-    await supabase.from('events').update({ theme }).eq('id', eventId);
+    if (!THEMES.find((t) => t.id === themeId)) return;
+    await supabase.from('events').update({ theme: themeId }).eq('id', eventId);
+    revalidatePath(`/app/eventos/${eventId}`);
+  }
+
+  async function confirmPurchase(formData: FormData) {
+    'use server';
+    const purchaseId = String(formData.get('purchase_id') ?? '');
+    if (!purchaseId) return;
+    const supabase = await createClient();
+    const {
+      data: { user }
+    } = await supabase.auth.getUser();
+    if (!user) return;
+
+    // Garante que essa compra pertence a um evento do usuário
+    const { data: p } = await supabase
+      .from('gift_purchases')
+      .select('id, event_id, events!inner(owner_id)')
+      .eq('id', purchaseId)
+      .single();
+    if (!p || (p as any).events.owner_id !== user.id) return;
+
+    await supabase
+      .from('gift_purchases')
+      .update({ status: 'paid', paid_at: new Date().toISOString() })
+      .eq('id', purchaseId);
+    revalidatePath(`/app/eventos/${eventId}`);
+  }
+
+  async function rejectPurchase(formData: FormData) {
+    'use server';
+    const purchaseId = String(formData.get('purchase_id') ?? '');
+    if (!purchaseId) return;
+    const supabase = await createClient();
+    const {
+      data: { user }
+    } = await supabase.auth.getUser();
+    if (!user) return;
+
+    const { data: p } = await supabase
+      .from('gift_purchases')
+      .select('id, event_id, events!inner(owner_id)')
+      .eq('id', purchaseId)
+      .single();
+    if (!p || (p as any).events.owner_id !== user.id) return;
+
+    // Volta pro estado 'pending' pra convidado poder confirmar de novo
+    await supabase
+      .from('gift_purchases')
+      .update({ status: 'pending' })
+      .eq('id', purchaseId);
+    revalidatePath(`/app/eventos/${eventId}`);
+  }
+
+  async function deleteEvent() {
+    'use server';
+    const supabase = await createClient();
+    const {
+      data: { user }
+    } = await supabase.auth.getUser();
+    if (!user) redirect('/login');
+
+    const { data: ev } = await supabase
+      .from('events')
+      .select('owner_id')
+      .eq('id', eventId)
+      .single();
+    if (!ev || ev.owner_id !== user.id) return;
+
+    // Delete cascata — depende do ON DELETE CASCADE definido nas FKs.
+    // Se o schema não tiver cascade, apaga filhos antes.
+    await supabase.from('gift_purchases').delete().eq('event_id', eventId);
+    await supabase.from('gift_items').delete().eq('event_id', eventId);
+    await supabase.from('rsvps').delete().eq('event_id', eventId);
+    await supabase.from('events').delete().eq('id', eventId);
+    redirect('/app');
   }
 
   async function generatePlanPix() {
@@ -197,39 +280,9 @@ export default async function EventDetailPage({
         <section className="rounded-lg border border-gray-200 bg-white p-6">
           <h2 className="font-semibold">Tema da página</h2>
           <p className="mt-1 text-sm text-gray-600">
-            Escolha como a página dos convidados vai parecer. Padrões e decorações variam por tema.
+            Escolha como a página dos convidados vai parecer. O tema é aplicado na hora.
           </p>
-          <form action={setTheme} className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3">
-            {THEMES.map((t) => {
-              const selected = (event.theme ?? 'default') === t.id;
-              return (
-                <button
-                  key={t.id}
-                  type="submit"
-                  name="theme"
-                  value={t.id}
-                  className={`overflow-hidden rounded-md border-2 text-left transition ${
-                    selected ? 'border-brand-500' : 'border-gray-200 hover:border-gray-300'
-                  }`}
-                >
-                  <div
-                    className={`relative h-16 w-full ${t.pageBg}`}
-                    style={t.pattern ? { backgroundImage: t.pattern } : undefined}
-                  >
-                    {t.Decoration && (
-                      <div className="absolute inset-0 scale-[0.6] origin-top-right">
-                        <t.Decoration />
-                      </div>
-                    )}
-                  </div>
-                  <div className="px-3 py-2">
-                    <div className={`text-sm font-medium ${t.titleColor}`}>{t.name}</div>
-                    {selected && <div className="text-xs text-brand-600">Selecionado</div>}
-                  </div>
-                </button>
-              );
-            })}
-          </form>
+          <ThemePicker currentTheme={event.theme ?? 'default'} onSelect={setTheme} />
         </section>
       )}
 
@@ -383,11 +436,75 @@ export default async function EventDetailPage({
         </form>
       </section>
 
+      {/* Confirmações pendentes (convidados que clicaram "já paguei") */}
+      {pendingConfirmation.length > 0 && (
+        <section className="rounded-lg border border-amber-300 bg-amber-50 p-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="font-semibold text-amber-900">
+                Aguardando confirmação ({pendingConfirmation.length})
+              </h2>
+              <p className="mt-1 text-sm text-amber-900">
+                Esses convidados disseram que já pagaram. Confirme o recebimento no seu app do banco
+                e clique em <strong>Confirmar</strong> para marcar as cotas como pagas.
+              </p>
+            </div>
+            <div className="text-right">
+              <div className="text-xs uppercase text-amber-800">Total pendente</div>
+              <div className="text-lg font-semibold text-amber-900">
+                {formatBRL(aguardandoConfirmacao)}
+              </div>
+            </div>
+          </div>
+          <ul className="mt-4 divide-y divide-amber-200 rounded-md bg-white">
+            {pendingConfirmation.map((p) => (
+              <li key={p.id} className="flex flex-wrap items-center justify-between gap-3 p-3">
+                <div className="min-w-0 flex-1">
+                  <div className="font-medium">{p.buyer_name}</div>
+                  <div className="text-xs text-gray-500">
+                    {giftTitleById.get(p.gift_item_id) ?? 'Presente'} · {p.quotas} cota(s) ·{' '}
+                    {formatBRL(p.amount_cents)}
+                    {p.buyer_email ? ` · ${p.buyer_email}` : ''}
+                  </div>
+                </div>
+                <div className="flex shrink-0 gap-2">
+                  <form action={confirmPurchase}>
+                    <input type="hidden" name="purchase_id" value={p.id} />
+                    <button className="rounded-md bg-green-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-green-700">
+                      Confirmar ✓
+                    </button>
+                  </form>
+                  <form action={rejectPurchase}>
+                    <input type="hidden" name="purchase_id" value={p.id} />
+                    <button className="rounded-md border border-gray-300 bg-white px-3 py-1.5 text-xs text-gray-700 hover:bg-gray-50">
+                      Não recebi
+                    </button>
+                  </form>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
       {/* Stats */}
-      <section className="grid gap-4 md:grid-cols-3">
+      <section className="grid gap-4 md:grid-cols-4">
         <Stat label="Confirmados" value={String(rsvps?.length ?? 0)} />
-        <Stat label="Cotas pagas" value={String(purchases?.filter((p) => p.status === 'paid').length ?? 0)} />
+        <Stat label="Cotas pagas" value={String(cotasPagas)} />
+        <Stat label="Aguardando" value={formatBRL(aguardandoConfirmacao)} />
         <Stat label="Arrecadado" value={formatBRL(totalArrecadado)} />
+      </section>
+
+      {/* Danger zone — excluir evento */}
+      <section className="rounded-lg border border-gray-200 bg-white p-6">
+        <h2 className="font-semibold text-red-700">Excluir evento</h2>
+        <p className="mt-1 text-sm text-gray-600">
+          Apaga permanentemente este evento, seus presentes, RSVPs e compras. Essa ação não pode ser
+          desfeita.
+        </p>
+        <div className="mt-3">
+          <DeleteEventButton eventTitle={event.title} onDelete={deleteEvent} />
+        </div>
       </section>
     </div>
   );

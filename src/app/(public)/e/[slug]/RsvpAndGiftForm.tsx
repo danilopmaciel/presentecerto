@@ -19,28 +19,31 @@ type Gift = {
 
 export function RsvpAndGiftForm({
   eventId,
-  gifts
+  gifts,
+  cardClass,
+  accent
 }: {
   eventId: string;
   gifts: Gift[];
+  cardClass?: string;
+  accent?: string;
 }) {
   const [rsvpDone, setRsvpDone] = useState(false);
   const [rsvpId, setRsvpId] = useState<string | null>(null);
   const [guestName, setGuestName] = useState('');
   const [guestEmail, setGuestEmail] = useState('');
 
+  const baseCard = cardClass ?? 'bg-white';
+
   return (
     <div className="mt-10 space-y-8">
       {!rsvpDone ? (
-        <RsvpForm
-          eventId={eventId}
-          onDone={(id, name, email) => {
-            setRsvpId(id);
-            setGuestName(name);
-            setGuestEmail(email);
-            setRsvpDone(true);
-          }}
-        />
+        <RsvpForm eventId={eventId} cardClass={baseCard} onDone={(id, name, email) => {
+          setRsvpId(id);
+          setGuestName(name);
+          setGuestEmail(email);
+          setRsvpDone(true);
+        }} />
       ) : (
         <div className="rounded-md border border-green-200 bg-green-50 p-4 text-sm text-green-800">
           Presença confirmada, {guestName}! Obrigado por vir. ✨
@@ -60,6 +63,8 @@ export function RsvpAndGiftForm({
               defaultBuyerName={guestName}
               defaultBuyerEmail={guestEmail}
               rsvpId={rsvpId}
+              cardClass={baseCard}
+              accent={accent}
             />
           ))}
         </div>
@@ -70,10 +75,12 @@ export function RsvpAndGiftForm({
 
 function RsvpForm({
   eventId,
-  onDone
+  onDone,
+  cardClass = 'bg-white'
 }: {
   eventId: string;
   onDone: (id: string, name: string, email: string) => void;
+  cardClass?: string;
 }) {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -108,7 +115,7 @@ function RsvpForm({
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-3 rounded-lg bg-white p-6 shadow-sm">
+    <form onSubmit={handleSubmit} className={`space-y-3 rounded-lg p-6 shadow-sm ${cardClass}`}>
       <h2 className="text-lg font-semibold">Confirmar presença</h2>
       <input name="guest_name" required placeholder="Seu nome" className="w-full rounded-md border border-gray-300 px-3 py-2" />
       <input name="guest_email" type="email" placeholder="E-mail (opcional)" className="w-full rounded-md border border-gray-300 px-3 py-2" />
@@ -136,12 +143,16 @@ function GiftCard({
   gift,
   defaultBuyerName,
   defaultBuyerEmail,
-  rsvpId
+  rsvpId,
+  cardClass = 'bg-white',
+  accent
 }: {
   gift: Gift;
   defaultBuyerName: string;
   defaultBuyerEmail: string;
   rsvpId: string | null;
+  cardClass?: string;
+  accent?: string;
 }) {
   const [open, setOpen] = useState(false);
   const [quotas, setQuotas] = useState(1);
@@ -199,7 +210,10 @@ function GiftCard({
   }
 
   return (
-    <div className="rounded-lg bg-white p-4 shadow-sm">
+    <div
+      className={`rounded-lg p-4 shadow-sm ${cardClass}`}
+      style={accent ? { borderLeft: `4px solid ${accent}` } : undefined}
+    >
       <div className="flex items-center gap-4">
         {gift.image_path && (
           // eslint-disable-next-line @next/next/no-img-element
