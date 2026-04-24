@@ -1,8 +1,10 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import QRCode from 'qrcode';
 import { createClient } from '@/lib/supabase/client';
 import { formatBRL } from '@/lib/utils';
+import { CopyButton } from '@/components/CopyButton';
 
 type Gift = {
   id: string;
@@ -144,9 +146,30 @@ function GiftCard({
   const [open, setOpen] = useState(false);
   const [quotas, setQuotas] = useState(1);
   const [submitting, setSubmitting] = useState(false);
-  const [result, setResult] = useState<{ pix_payload: string; amount_cents: number } | null>(null);
+  const [result, setResult] = useState<{ id: string; pix_payload: string; amount_cents: number } | null>(null);
+  const [qrDataUrl, setQrDataUrl] = useState<string | null>(null);
+  const [confirming, setConfirming] = useState(false);
+  const [confirmed, setConfirmed] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const soldOut = gift.available <= 0;
+
+  useEffect(() => {
+    if (!result?.pix_payload) {
+      setQrDataUrl(null);
+      return;
+    }
+    let cancelled = false;
+    QRCode.toDataURL(result.pix_payload, { margin: 1, width: 220 })
+      .then((url) => {
+        if (!cancelled) setQrDataUrl(url);
+      })
+      .catch(() => {
+        if (!cancelled) setQrDataUrl(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [result?.pix_payload]);
 
   async function handleBuy(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -251,21 +274,80 @@ function GiftCard({
       )}
 
       {result && (
-        <div className="mt-4 space-y-3 border-t border-gray-100 pt-4">
+        <div className="mt-4 space-y-4 border-t border-gray-100 pt-4">
           <div className="rounded-md bg-gray-50 p-3 text-xs text-gray-600">
-            1. Copie o código abaixo, abra o app do seu banco, cole em "Pix copia-e-cola".<br />
-            2. Confirme o pagamento.<br />
-            3. Clique em "já paguei" para avisar o anfitrião.
+            <p className="font-medium text-gray-700">Como pagar:</p>
+            <p className="mt-1">
+              <strong>No celular:</strong> abra o app do seu banco, escolha "Pagar com Pix" →
+              "Ler QR Code" e aponte para o código abaixo.
+            </p>
+            <p className="mt-1">
+              <strong>No computador:</strong> copie o código Pix copia-e-cola, abra o app do seu
+              banco no celular e cole em "Pix copia-e-cola".
+            </p>
           </div>
-          <div className="rounded-md border border-gray-200 bg-white p-3 font-mono text-xs break-all">
-            {result.pix_payload}
+
+          <div className="grid gap-4 sm:grid-cols-[auto_1fr] sm:items-start">
+            {qrDataUrl && (
+              <div className="mx-auto sm:mx-0">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={qrDataUrl}
+                  alt="QR Code para pagamento Pix"
+                  className="h-40 w-40 rounded-md border border-gray-200 bg-white p-1"
+                />
+                <p className="mt-1 text-center text-[11px] text-gray-500">
+                  Aponte a câmera do banco
+                </p>
+              </div>
+            )}
+            <div className="space-y-2">
+              <div className="text-xs font-medium text-gray-700">Pix copia-e-cola</div>
+              <div className="max-h-28 overflow-auto rounded-md border border-gray-200 bg-white p-3 font-mono text-[11px] break-all">
+                {result.pix_payload}
+              </div>
+              <CopyButton
+                text={result.pix_payload}
+                label="Copiar código Pix"
+                className="w-full"
+              />
+            </div>
           </div>
-          <button
-            onClick={() => navigator.clipboard?.writeText(result.pix_payload)}
-            className="w-full rounded-md bg-brand-500 py-2 text-sm text-white hover:bg-brand-600"
-          >
-            Copiar código Pix
-          </button>
+
+          <div className="rounded-md border border-dashed border-gray-300 bg-white p-3 text-xs text-gray-600">
+            Depois de pagar, avise o anfitrião clicando em <strong>Já paguei</strong>. A cota fica
+            reservada e o anfitrião confirma o recebimento.
+          </div>
+
+          {!confirmed ? (
+            <button
+              type="button"
+              disabled={confirming}
+              onClick={async () => {
+                if (!result?.id) {
+                  setConfirmed(true);
+                  return;
+                }
+                setConfirming(true);
+                try {
+                  await fetch(`/api/purchases/${result.id}/mark-paid`, {
+                    method: 'POST'
+                  });
+                } catch {
+                  // falha silenciosa — anfitrião pode acompanhar manualmente
+                }
+                setConfirming(false);
+                setConfirmed(true);
+              }}
+              className="w-full rounded-md border border-brand-500 py-2 text-sm font-medium text-brand-600 hover:bg-brand-50 disabled:opacity-60"
+            >
+              {confirming ? 'Avisando...' : 'Já paguei ✓'}
+            </button>
+          ) : (
+            <div className="rounded-md border border-green-200 bg-green-50 p-3 text-center text-xs text-green-800">
+              🎉 Obrigado! O anfitrião foi avisado e vai confirmar o recebimento.
+            </div>
+          )}
         </div>
       )}
     </div>

@@ -1,17 +1,11 @@
 import Link from 'next/link';
 import { redirect, notFound } from 'next/navigation';
+import QRCode from 'qrcode';
 import { createClient } from '@/lib/supabase/server';
 import { getPaymentProvider } from '@/lib/payments';
 import { formatBRL } from '@/lib/utils';
-
-const THEMES = [
-  { id: 'default', name: 'Padrão', sample: 'bg-brand-50 text-brand-900' },
-  { id: 'infantil-rosa', name: 'Infantil Rosa', sample: 'bg-pink-50 text-pink-900' },
-  { id: 'infantil-azul', name: 'Infantil Azul', sample: 'bg-sky-50 text-sky-900' },
-  { id: 'aquatico', name: 'Aquático', sample: 'bg-teal-50 text-teal-900' },
-  { id: 'safari', name: 'Safari', sample: 'bg-amber-50 text-amber-900' },
-  { id: 'principe', name: 'Príncipe / Princesa', sample: 'bg-yellow-50 text-yellow-900' }
-];
+import { THEMES } from '@/lib/themes';
+import { CopyButton } from '@/components/CopyButton';
 
 export default async function EventDetailPage({
   params
@@ -171,6 +165,9 @@ export default async function EventDetailPage({
   const publicUrl = `${site}/e/${event.slug}`;
   const isPublished = event.status === 'published';
   const testMode = process.env.NEXT_PUBLIC_TEST_MODE === 'true';
+  const planQrDataUrl = event.plan_pix_payload
+    ? await QRCode.toDataURL(event.plan_pix_payload, { margin: 1, width: 240 })
+    : null;
 
   return (
     <div className="space-y-8">
@@ -200,7 +197,7 @@ export default async function EventDetailPage({
         <section className="rounded-lg border border-gray-200 bg-white p-6">
           <h2 className="font-semibold">Tema da página</h2>
           <p className="mt-1 text-sm text-gray-600">
-            Escolha como a página dos convidados vai parecer. Você pode trocar quantas vezes quiser.
+            Escolha como a página dos convidados vai parecer. Padrões e decorações variam por tema.
           </p>
           <form action={setTheme} className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3">
             {THEMES.map((t) => {
@@ -211,13 +208,24 @@ export default async function EventDetailPage({
                   type="submit"
                   name="theme"
                   value={t.id}
-                  className={`rounded-md border-2 p-3 text-left transition ${
+                  className={`overflow-hidden rounded-md border-2 text-left transition ${
                     selected ? 'border-brand-500' : 'border-gray-200 hover:border-gray-300'
                   }`}
                 >
-                  <div className={`mb-2 h-10 w-full rounded ${t.sample}`} />
-                  <div className="text-sm font-medium">{t.name}</div>
-                  {selected && <div className="text-xs text-brand-600">Selecionado</div>}
+                  <div
+                    className={`relative h-16 w-full ${t.pageBg}`}
+                    style={t.pattern ? { backgroundImage: t.pattern } : undefined}
+                  >
+                    {t.Decoration && (
+                      <div className="absolute inset-0 scale-[0.6] origin-top-right">
+                        <t.Decoration />
+                      </div>
+                    )}
+                  </div>
+                  <div className="px-3 py-2">
+                    <div className={`text-sm font-medium ${t.titleColor}`}>{t.name}</div>
+                    {selected && <div className="text-xs text-brand-600">Selecionado</div>}
+                  </div>
                 </button>
               );
             })}
@@ -265,9 +273,22 @@ export default async function EventDetailPage({
             </form>
           ) : (
             <div className="mt-4 space-y-3">
-              <div className="rounded-md border border-yellow-200 bg-white p-4">
-                <div className="text-xs uppercase text-gray-500">Pix copia-e-cola</div>
-                <div className="mt-1 break-all font-mono text-xs">{event.plan_pix_payload}</div>
+              <div className="grid gap-4 sm:grid-cols-[auto,1fr]">
+                {planQrDataUrl && (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={planQrDataUrl}
+                    alt="QR Code Pix do plano"
+                    className="h-44 w-44 shrink-0 rounded-md border border-yellow-200 bg-white p-2"
+                  />
+                )}
+                <div className="space-y-2">
+                  <div className="rounded-md border border-yellow-200 bg-white p-3">
+                    <div className="text-xs uppercase text-gray-500">Pix copia-e-cola</div>
+                    <div className="mt-1 break-all font-mono text-xs">{event.plan_pix_payload}</div>
+                  </div>
+                  <CopyButton text={event.plan_pix_payload} />
+                </div>
               </div>
               {event.plan_payment_status === 'pending' && (
                 <form action={markPlanPaidByHost}>
