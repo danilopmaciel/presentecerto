@@ -25,7 +25,7 @@ export function ThemePicker({
   }
 
   return (
-    <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3">
+    <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
       {THEMES.map((t) => {
         const selected = optimisticTheme === t.id;
         return (
@@ -41,16 +41,20 @@ export function ThemePicker({
             } ${pending && !selected ? 'opacity-60' : ''}`}
           >
             <div
-              className={`relative h-20 w-full ${t.pageBg}`}
+              className={`relative h-24 w-full overflow-hidden ${t.pageBg}`}
               style={t.pattern ? { backgroundImage: t.pattern } : undefined}
             >
-              {t.Decoration && (
+              {t.HeroArt ? (
+                <div className="absolute inset-0 -translate-y-1 scale-[0.7] origin-center">
+                  <t.HeroArt />
+                </div>
+              ) : t.Decoration ? (
                 <div className="absolute inset-0 origin-top-right scale-[0.55]">
                   <t.Decoration />
                 </div>
-              )}
+              ) : null}
               {selected && (
-                <div className="absolute right-1.5 top-1.5 rounded-full bg-brand-500 px-2 py-0.5 text-[10px] font-medium text-white">
+                <div className="absolute right-1.5 top-1.5 rounded-full bg-brand-500 px-2 py-0.5 text-[10px] font-medium text-white shadow">
                   ✓ Ativo
                 </div>
               )}
