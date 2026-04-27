@@ -28,6 +28,7 @@ export function RsvpAndGiftForm({
   cardClass?: string;
   accent?: string;
 }) {
+  const [rsvpOpen, setRsvpOpen] = useState(false);
   const [rsvpDone, setRsvpDone] = useState(false);
   const [rsvpId, setRsvpId] = useState<string | null>(null);
   const [guestName, setGuestName] = useState('');
@@ -37,13 +38,36 @@ export function RsvpAndGiftForm({
 
   return (
     <div className="mt-10 space-y-8">
+      {/* RSVP — botão grande que expande o form */}
       {!rsvpDone ? (
-        <RsvpForm eventId={eventId} cardClass={baseCard} onDone={(id, name, email) => {
-          setRsvpId(id);
-          setGuestName(name);
-          setGuestEmail(email);
-          setRsvpDone(true);
-        }} />
+        rsvpOpen ? (
+          <RsvpForm
+            eventId={eventId}
+            cardClass={baseCard}
+            accent={accent}
+            onCancel={() => setRsvpOpen(false)}
+            onDone={(id, name, email) => {
+              setRsvpId(id);
+              setGuestName(name);
+              setGuestEmail(email);
+              setRsvpDone(true);
+              setRsvpOpen(false);
+            }}
+          />
+        ) : (
+          <button
+            type="button"
+            onClick={() => setRsvpOpen(true)}
+            className="block w-full rounded-2xl px-6 py-5 text-center text-lg font-semibold text-white shadow-lg ring-2 ring-white/40 transition hover:scale-[1.01] hover:shadow-xl active:scale-[0.99]"
+            style={{
+              background: accent
+                ? `linear-gradient(135deg, ${accent}, ${accent}cc)`
+                : 'linear-gradient(135deg, #ef4444, #f97316)'
+            }}
+          >
+            Clique aqui para confirmar presença ✅
+          </button>
+        )
       ) : (
         <div className="rounded-md border border-green-200 bg-green-50 p-4 text-sm text-green-800">
           Presença confirmada, {guestName}! Obrigado por vir. ✨
@@ -76,11 +100,15 @@ export function RsvpAndGiftForm({
 function RsvpForm({
   eventId,
   onDone,
-  cardClass = 'bg-white'
+  onCancel,
+  cardClass = 'bg-white',
+  accent
 }: {
   eventId: string;
   onDone: (id: string, name: string, email: string) => void;
+  onCancel: () => void;
   cardClass?: string;
+  accent?: string;
 }) {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -115,27 +143,124 @@ function RsvpForm({
   }
 
   return (
-    <form onSubmit={handleSubmit} className={`space-y-3 rounded-lg p-6 shadow-sm ${cardClass}`}>
-      <h2 className="text-lg font-semibold">Confirmar presença</h2>
-      <input name="guest_name" required placeholder="Seu nome" className="w-full rounded-md border border-gray-300 px-3 py-2" />
-      <input name="guest_email" type="email" placeholder="E-mail (opcional)" className="w-full rounded-md border border-gray-300 px-3 py-2" />
-      <input name="guest_phone" placeholder="Telefone/WhatsApp (opcional)" className="w-full rounded-md border border-gray-300 px-3 py-2" />
+    <form
+      onSubmit={handleSubmit}
+      className={`space-y-3 rounded-lg p-6 shadow-sm ${cardClass}`}
+      style={accent ? { borderTop: `4px solid ${accent}` } : undefined}
+    >
+      <div className="flex items-center justify-between">
+        <h2 className="text-lg font-semibold">Confirmar presença</h2>
+        <button
+          type="button"
+          onClick={onCancel}
+          className="text-xs text-gray-500 hover:text-gray-700"
+        >
+          Cancelar
+        </button>
+      </div>
+      <input
+        name="guest_name"
+        required
+        placeholder="Seu nome"
+        className="w-full rounded-md border border-gray-300 px-3 py-2"
+      />
+      <input
+        name="guest_email"
+        type="email"
+        placeholder="E-mail (opcional)"
+        className="w-full rounded-md border border-gray-300 px-3 py-2"
+      />
+      <input
+        name="guest_phone"
+        placeholder="Telefone/WhatsApp (opcional)"
+        className="w-full rounded-md border border-gray-300 px-3 py-2"
+      />
       <div className="grid grid-cols-2 gap-3">
         <label className="text-sm">
           Adultos
-          <input name="adults" type="number" min={0} defaultValue={1} className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2" />
+          <input
+            name="adults"
+            type="number"
+            min={0}
+            defaultValue={1}
+            className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2"
+          />
         </label>
         <label className="text-sm">
           Crianças
-          <input name="children" type="number" min={0} defaultValue={0} className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2" />
+          <input
+            name="children"
+            type="number"
+            min={0}
+            defaultValue={0}
+            className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2"
+          />
         </label>
       </div>
-      <textarea name="note" rows={2} placeholder="Observação (restrição alimentar etc)" className="w-full rounded-md border border-gray-300 px-3 py-2" />
-      <button disabled={submitting} className="w-full rounded-md bg-brand-500 py-2 text-white hover:bg-brand-600 disabled:opacity-60">
+      <textarea
+        name="note"
+        rows={2}
+        placeholder="Observação (restrição alimentar etc)"
+        className="w-full rounded-md border border-gray-300 px-3 py-2"
+      />
+      <button
+        disabled={submitting}
+        className="w-full rounded-md py-2 text-white shadow-sm hover:opacity-90 disabled:opacity-60"
+        style={{ background: accent ?? '#3b82f6' }}
+      >
         {submitting ? 'Enviando...' : 'Confirmar presença'}
       </button>
       {error && <div className="text-sm text-red-600">{error}</div>}
     </form>
+  );
+}
+
+function ProgressBar({
+  reserved,
+  total,
+  accent
+}: {
+  reserved: number;
+  total: number;
+  accent?: string;
+}) {
+  const pct = total > 0 ? Math.min(100, Math.round((reserved / total) * 100)) : 0;
+  const c = accent ?? '#10b981';
+  return (
+    <div className="mt-2">
+      <div className="flex items-center justify-between text-[11px] text-gray-600">
+        <span>
+          {reserved} de {total} cotas
+        </span>
+        <span className="font-medium">{pct}%</span>
+      </div>
+      <div className="mt-1 h-2 w-full overflow-hidden rounded-full bg-gray-200">
+        <div
+          className="h-full rounded-full transition-all"
+          style={{
+            width: `${pct}%`,
+            background: `linear-gradient(90deg, ${c}, ${c}aa)`
+          }}
+        />
+      </div>
+    </div>
+  );
+}
+
+function SoldOutStamp() {
+  return (
+    <div className="pointer-events-none absolute inset-0 flex items-center justify-center overflow-hidden">
+      <div
+        className="select-none rounded-md border-4 border-red-600 px-4 py-1 text-xl font-extrabold tracking-widest text-red-600 shadow-lg"
+        style={{
+          transform: 'rotate(-18deg)',
+          background: 'rgba(255,255,255,0.85)',
+          letterSpacing: '0.15em'
+        }}
+      >
+        ESGOTADO
+      </div>
+    </div>
   );
 }
 
@@ -211,39 +336,64 @@ function GiftCard({
 
   return (
     <div
-      className={`rounded-lg p-4 shadow-sm ${cardClass}`}
+      className={`relative rounded-lg p-4 shadow-sm ${cardClass} ${
+        soldOut ? 'overflow-hidden' : ''
+      }`}
       style={accent ? { borderLeft: `4px solid ${accent}` } : undefined}
     >
       <div className="flex items-center gap-4">
         {gift.image_path && (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={gift.image_path}
-            alt={gift.title}
-            className="h-20 w-20 shrink-0 rounded-md object-cover"
-          />
+          <div className="relative shrink-0">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={gift.image_path}
+              alt={gift.title}
+              className={`h-20 w-20 rounded-md object-cover ${
+                soldOut ? 'opacity-60 grayscale' : ''
+              }`}
+            />
+          </div>
         )}
         <div className="min-w-0 flex-1">
-          <div className="font-medium">{gift.title}</div>
-          {gift.description && <div className="text-sm text-gray-600">{gift.description}</div>}
-          <div className="mt-1 text-sm text-gray-500">
-            {formatBRL(gift.quota_value_cents)} / cota · {gift.available} cotas disponíveis
+          <div className="flex items-center gap-2">
+            <div className="font-medium">{gift.title}</div>
+            {soldOut && (
+              <span className="rounded-full bg-red-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-red-700">
+                Esgotado
+              </span>
+            )}
           </div>
+          {gift.description && (
+            <div className="text-sm text-gray-600">{gift.description}</div>
+          )}
+          <div className="mt-1 text-sm text-gray-500">
+            {formatBRL(gift.quota_value_cents)} / cota
+            {!soldOut && ` · ${gift.available} cotas disponíveis`}
+          </div>
+          <ProgressBar
+            reserved={gift.reserved}
+            total={gift.quota_total}
+            accent={accent}
+          />
         </div>
-        {!soldOut ? (
+        {!soldOut && (
           <button
             onClick={() => setOpen((v) => !v)}
-            className="shrink-0 rounded-md bg-brand-500 px-3 py-1.5 text-sm text-white hover:bg-brand-600"
+            className="shrink-0 rounded-md px-3 py-1.5 text-sm text-white shadow-sm hover:opacity-90"
+            style={{ background: accent ?? '#3b82f6' }}
           >
             Presentear
           </button>
-        ) : (
-          <span className="shrink-0 rounded bg-gray-100 px-2 py-1 text-xs text-gray-500">Esgotado</span>
         )}
       </div>
 
-      {open && !result && (
-        <form onSubmit={handleBuy} className="mt-4 space-y-3 border-t border-gray-100 pt-4">
+      {soldOut && <SoldOutStamp />}
+
+      {open && !result && !soldOut && (
+        <form
+          onSubmit={handleBuy}
+          className="mt-4 space-y-3 border-t border-gray-100 pt-4"
+        >
           <label className="block text-sm">
             Quantas cotas?
             <input
@@ -251,7 +401,11 @@ function GiftCard({
               min={1}
               max={gift.available}
               value={quotas}
-              onChange={(e) => setQuotas(Math.max(1, Math.min(gift.available, Number(e.target.value))))}
+              onChange={(e) =>
+                setQuotas(
+                  Math.max(1, Math.min(gift.available, Number(e.target.value)))
+                )
+              }
               className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2"
             />
           </label>
@@ -279,7 +433,8 @@ function GiftCard({
           </div>
           <button
             disabled={submitting}
-            className="w-full rounded-md bg-brand-500 py-2 text-white hover:bg-brand-600 disabled:opacity-60"
+            className="w-full rounded-md py-2 text-white shadow-sm hover:opacity-90 disabled:opacity-60"
+            style={{ background: accent ?? '#3b82f6' }}
           >
             {submitting ? 'Gerando Pix...' : 'Gerar Pix'}
           </button>
@@ -353,7 +508,11 @@ function GiftCard({
                 setConfirming(false);
                 setConfirmed(true);
               }}
-              className="w-full rounded-md border border-brand-500 py-2 text-sm font-medium text-brand-600 hover:bg-brand-50 disabled:opacity-60"
+              className="w-full rounded-md border py-2 text-sm font-medium hover:bg-gray-50 disabled:opacity-60"
+              style={{
+                borderColor: accent ?? '#3b82f6',
+                color: accent ?? '#3b82f6'
+              }}
             >
               {confirming ? 'Avisando...' : 'Já paguei ✓'}
             </button>

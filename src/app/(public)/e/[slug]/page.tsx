@@ -3,6 +3,8 @@ import Link from 'next/link';
 import { createClient } from '@/lib/supabase/server';
 import { getTheme } from '@/lib/themes';
 import { RsvpAndGiftForm } from './RsvpAndGiftForm';
+import { GiftSuggestionsDisplay } from '@/components/GiftSuggestionsDisplay';
+import type { Suggestion } from '@/components/GiftSuggestionsEditor';
 
 export const dynamic = 'force-dynamic';
 
@@ -19,7 +21,7 @@ export default async function PublicEventPage({
 
   const { data: event } = await supabase
     .from('events')
-    .select('id, slug, owner_id, title, description, starts_at, location_text, location_maps_url, theme, status, plan_tier')
+    .select('id, slug, owner_id, title, description, starts_at, location_text, location_maps_url, theme, status, plan_tier, gift_suggestions')
     .eq('slug', slug)
     .single();
 
@@ -60,6 +62,9 @@ export default async function PublicEventPage({
   const Decoration = theme.Decoration;
   const HeroArt = theme.HeroArt;
   const isPreview = event.status !== 'published';
+  const suggestions: Suggestion[] = Array.isArray(event.gift_suggestions)
+    ? (event.gift_suggestions as Suggestion[])
+    : [];
 
   return (
     <main className={`relative min-h-screen overflow-hidden ${theme.pageBg}`}>
@@ -112,6 +117,8 @@ export default async function PublicEventPage({
             <p className="mt-4 whitespace-pre-wrap text-sm text-gray-700">{event.description}</p>
           )}
         </header>
+
+        <GiftSuggestionsDisplay suggestions={suggestions} accent={theme.accent} />
 
         <RsvpAndGiftForm
           eventId={event.id}

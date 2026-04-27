@@ -9,6 +9,11 @@ import { THEMES } from '@/lib/themes';
 import { CopyButton } from '@/components/CopyButton';
 import { ThemePicker } from '@/components/ThemePicker';
 import { DeleteEventButton } from '@/components/DeleteEventButton';
+import { GiftAddForm } from '@/components/GiftAddForm';
+import {
+  GiftSuggestionsEditor,
+  type Suggestion
+} from '@/components/GiftSuggestionsEditor';
 
 export default async function EventDetailPage({
   params
@@ -51,6 +56,10 @@ export default async function EventDetailPage({
 
   const giftTitleById = new Map((gifts ?? []).map((g) => [g.id, g.title]));
 
+  const initialSuggestions: Suggestion[] = Array.isArray(event.gift_suggestions)
+    ? (event.gift_suggestions as Suggestion[])
+    : [];
+
   const paidPurchases = purchases?.filter((p) => p.status === 'paid') ?? [];
   const pendingConfirmation = purchases?.filter((p) => p.status === 'paid_claimed') ?? [];
 
@@ -79,6 +88,7 @@ export default async function EventDetailPage({
       quota_value_cents,
       quota_total
     });
+    revalidatePath(`/app/eventos/${eventId}`);
   }
 
   async function setTheme(themeId: string) {
@@ -86,6 +96,35 @@ export default async function EventDetailPage({
     const supabase = await createClient();
     if (!THEMES.find((t) => t.id === themeId)) return;
     await supabase.from('events').update({ theme: themeId }).eq('id', eventId);
+    revalidatePath(`/app/eventos/${eventId}`);
+  }
+
+  async function saveSuggestions(next: Suggestion[]) {
+    'use server';
+    const supabase = await createClient();
+    const {
+      data: { user }
+    } = await supabase.auth.getUser();
+    if (!user) return;
+    const { data: ev } = await supabase
+      .from('events')
+      .select('owner_id')
+      .eq('id', eventId)
+      .single();
+    if (!ev || ev.owner_id !== user.id) return;
+
+    // Sanitiza: id, label obrigatório; emoji e color opcionais; máximo 30 itens.
+    const clean = (next ?? [])
+      .filter((s) => s && typeof s.label === 'string' && s.label.trim().length > 0)
+      .slice(0, 30)
+      .map((s) => ({
+        id: String(s.id ?? crypto.randomUUID()),
+        label: String(s.label).slice(0, 80),
+        emoji: s.emoji ? String(s.emoji).slice(0, 8) : undefined,
+        color: s.color ? String(s.color).slice(0, 16) : undefined
+      }));
+
+    await supabase.from('events').update({ gift_suggestions: clean }).eq('id', eventId);
     revalidatePath(`/app/eventos/${eventId}`);
   }
 
@@ -409,31 +448,21 @@ export default async function EventDetailPage({
           })}
         </div>
 
-        <form action={addGift} className="mt-4 space-y-3 rounded-md border border-dashed border-gray-300 p-4">
-          <div className="text-sm font-medium">Adicionar presente</div>
-          <input name="title" required placeholder="Ex.: Triciclo — cotas de R$ 50" className="w-full rounded-md border border-gray-300 px-3 py-2" />
-          <input name="description" placeholder="Descrição opcional" className="w-full rounded-md border border-gray-300 px-3 py-2" />
-          <input
-            name="image_path"
-            type="url"
-            placeholder="URL da foto (cole link da loja, Drive ou Imgur)"
-            className="w-full rounded-md border border-gray-300 px-3 py-2"
-          />
-          <p className="-mt-1 text-xs text-gray-500">
-            Cole o endereço de uma imagem pública. Em breve teremos upload direto.
-          </p>
-          <div className="grid grid-cols-2 gap-3">
-            <label className="block text-sm">
-              Valor da cota (R$)
-              <input name="quota_value" type="number" step="0.01" min="1" required className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2" />
-            </label>
-            <label className="block text-sm">
-              Nº de cotas
-              <input name="quota_total" type="number" min="1" defaultValue={10} required className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2" />
-            </label>
-          </div>
-          <button className="rounded-md bg-brand-500 px-4 py-2 text-white hover:bg-brand-600">Adicionar</button>
-        </form>
+        <div className="mt-4">
+          <GiftAddForm onAdd={addGift} />
+        </div>
+      </section>
+
+      {/* Sugestões de presente em texto livre */}
+      <section className="rounded-lg border border-gray-200 bg-white p-6">
+        <h2 className="font-semibold">Sugestões de presente (sem cota)</h2>
+        <p className="mt-1 text-sm text-gray-600">
+          Ideias rápidas pros convidados que preferem levar um mimo no dia (roupas, calçado,
+          materiais...). Aparecem como bolinhas coloridas na página pública.
+        </p>
+        <div className="mt-4">
+          <GiftSuggestionsEditor initial={initialSuggestions} onSave={saveSuggestions} />
+        </div>
       </section>
 
       {/* Confirmações pendentes (convidados que clicaram "já paguei") */}
