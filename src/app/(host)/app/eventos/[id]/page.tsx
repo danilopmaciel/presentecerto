@@ -10,6 +10,7 @@ import { CopyButton } from '@/components/CopyButton';
 import { ThemePicker } from '@/components/ThemePicker';
 import { DeleteEventButton } from '@/components/DeleteEventButton';
 import { GiftAddForm } from '@/components/GiftAddForm';
+import { GiftRow } from '@/components/GiftRow';
 import {
   GiftSuggestionsEditor,
   type Suggestion
@@ -88,6 +89,100 @@ export default async function EventDetailPage({
       quota_value_cents,
       quota_total
     });
+    revalidatePath(`/app/eventos/${eventId}`);
+  }
+
+  async function updateGift(formData: FormData) {
+    'use server';
+    const supabase = await createClient();
+    const {
+      data: { user }
+    } = await supabase.auth.getUser();
+    if (!user) return;
+
+    const giftId = String(formData.get('gift_id') ?? '');
+    if (!giftId) return;
+
+    // Garante que o presente é desse evento e o evento é do usuário
+    const { data: existing } = await supabase
+      .from('gift_items')
+      .select('id, event_id, events!inner(owner_id)')
+      .eq('id', giftId)
+      .single();
+    if (
+      !existing ||
+      existing.event_id !== eventId ||
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (existing as any).events.owner_id !== user.id
+    ) {
+      return;
+    }
+
+    const title = String(formData.get('title') ?? '').trim();
+    const description = String(formData.get('description') ?? '').trim();
+    const image_path = String(formData.get('image_path') ?? '').trim();
+    const quota_value_cents = Math.round(Number(formData.get('quota_value') ?? 0) * 100);
+    const quota_total = Number(formData.get('quota_total') ?? 1);
+    if (!title || quota_value_cents <= 0 || quota_total <= 0) return;
+
+    // Não permite reduzir o total abaixo do que já foi vendido
+    const { data: sales } = await supabase
+      .from('gift_purchases')
+      .select('quotas, status')
+      .eq('gift_item_id', giftId)
+      .in('status', ['pending', 'paid_claimed', 'paid']);
+    const sold = (sales ?? []).reduce((s, p) => s + p.quotas, 0);
+    const safeTotal = Math.max(quota_total, sold);
+
+    await supabase
+      .from('gift_items')
+      .update({
+        title,
+        description: description || null,
+        image_path: image_path || null,
+        quota_value_cents,
+        quota_total: safeTotal
+      })
+      .eq('id', giftId);
+    revalidatePath(`/app/eventos/${eventId}`);
+  }
+
+  async function deleteGift(formData: FormData): Promise<{ error?: string } | void> {
+    'use server';
+    const supabase = await createClient();
+    const {
+      data: { user }
+    } = await supabase.auth.getUser();
+    if (!user) return { error: 'Não autenticado.' };
+
+    const giftId = String(formData.get('gift_id') ?? '');
+    if (!giftId) return { error: 'ID inválido.' };
+
+    const { data: existing } = await supabase
+      .from('gift_items')
+      .select('id, event_id, events!inner(owner_id)')
+      .eq('id', giftId)
+      .single();
+    if (
+      !existing ||
+      existing.event_id !== eventId ||
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (existing as any).events.owner_id !== user.id
+    ) {
+      return { error: 'Sem permissão.' };
+    }
+
+    // Bloqueia exclusão se houver compras ativas
+    const { data: sales } = await supabase
+      .from('gift_purchases')
+      .select('id, status')
+      .eq('gift_item_id', giftId)
+      .in('status', ['pending', 'paid_claimed', 'paid']);
+    if ((sales ?? []).length > 0) {
+      return { error: 'Esse presente tem cotas reservadas/pagas. Cancele as compras antes.' };
+    }
+
+    await supabase.from('gift_items').delete().eq('id', giftId);
     revalidatePath(`/app/eventos/${eventId}`);
   }
 
@@ -422,28 +517,31 @@ export default async function EventDetailPage({
         <h2 className="text-lg font-semibold">Lista de presentes (cotas)</h2>
         <div className="mt-3 space-y-2">
           {gifts?.map((g) => {
-            const sold = purchases
-              ?.filter(
-                (p) => p.gift_item_id === g.id && (p.status === 'paid' || p.status === 'paid_claimed' || p.status === 'pending')
-              )
-              .reduce((s, p) => s + p.quotas, 0) ?? 0;
+            const sold =
+              purchases
+                ?.filter(
+                  (p) =>
+                    p.gift_item_id === g.id &&
+                    (p.status === 'paid' ||
+                      p.status === 'paid_claimed' ||
+                      p.status === 'pending')
+                )
+                .reduce((s, p) => s + p.quotas, 0) ?? 0;
             return (
-              <div key={g.id} className="flex items-center gap-4 rounded-md border border-gray-200 bg-white p-4">
-                {g.image_path && (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    src={g.image_path}
-                    alt={g.title}
-                    className="h-16 w-16 shrink-0 rounded object-cover"
-                  />
-                )}
-                <div className="min-w-0 flex-1">
-                  <div className="font-medium">{g.title}</div>
-                  <div className="text-sm text-gray-500">
-                    {formatBRL(g.quota_value_cents)} / cota — {sold} de {g.quota_total} vendidas
-                  </div>
-                </div>
-              </div>
+              <GiftRow
+                key={g.id}
+                gift={{
+                  id: g.id,
+                  title: g.title,
+                  description: g.description,
+                  image_path: g.image_path,
+                  quota_value_cents: g.quota_value_cents,
+                  quota_total: g.quota_total
+                }}
+                sold={sold}
+                onUpdate={updateGift}
+                onDelete={deleteGift}
+              />
             );
           })}
         </div>
