@@ -15,6 +15,8 @@ import {
   GiftSuggestionsEditor,
   type Suggestion
 } from '@/components/GiftSuggestionsEditor';
+import { PixKeyEditor } from '@/components/PixKeyEditor';
+import { normalizePixKey } from '@/lib/pix-key';
 
 export default async function EventDetailPage({
   params
@@ -54,6 +56,12 @@ export default async function EventDetailPage({
     .select('id, buyer_name, buyer_email, quotas, amount_cents, status, paid_at, gift_item_id, created_at')
     .eq('event_id', event.id)
     .order('created_at', { ascending: false });
+
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('pix_key')
+    .eq('id', user.id)
+    .single();
 
   const giftTitleById = new Map((gifts ?? []).map((g) => [g.id, g.title]));
 
@@ -192,6 +200,25 @@ export default async function EventDetailPage({
     if (!THEMES.find((t) => t.id === themeId)) return;
     await supabase.from('events').update({ theme: themeId }).eq('id', eventId);
     revalidatePath(`/app/eventos/${eventId}`);
+  }
+
+  async function updatePixKey(formData: FormData): Promise<{ error?: string; pix_key?: string }> {
+    'use server';
+    const supabase = await createClient();
+    const {
+      data: { user }
+    } = await supabase.auth.getUser();
+    if (!user) return { error: 'Não autenticado.' };
+
+    const raw = String(formData.get('pix_key') ?? '');
+    const normalized = normalizePixKey(raw);
+    if (!normalized || normalized.length < 3 || normalized.length > 77) {
+      return { error: 'Chave Pix inválida.' };
+    }
+
+    await supabase.from('profiles').update({ pix_key: normalized }).eq('id', user.id);
+    revalidatePath(`/app/eventos/${eventId}`);
+    return { pix_key: normalized };
   }
 
   async function saveSuggestions(next: Suggestion[]) {
@@ -408,6 +435,18 @@ export default async function EventDetailPage({
           {isPublished ? 'Abrir página pública ↗' : 'Pré-visualizar página ↗'}
         </a>
       </div>
+
+      {/* Configuração de pagamento — chave Pix do anfitrião */}
+      <section className="rounded-lg border border-gray-200 bg-white p-6">
+        <h2 className="font-semibold">Configuração de pagamento</h2>
+        <p className="mt-1 text-sm text-gray-600">
+          Os presentes vão direto pra sua chave Pix — o PresenteCerto não retém o valor. Confira que
+          a chave está no formato certo antes de divulgar a página.
+        </p>
+        <div className="mt-4">
+          <PixKeyEditor current={profile?.pix_key ?? null} onSave={updatePixKey} />
+        </div>
+      </section>
 
       {/* Tema (apenas plano temático) */}
       {event.plan_tier === 'themed' && (

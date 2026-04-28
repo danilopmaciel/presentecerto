@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { uniqueSlug } from '@/lib/utils';
 import { eventCreateSchema } from '@/lib/validation/schemas';
+import { normalizePixKey } from '@/lib/pix-key';
 
 export default function NewEventPage() {
   async function createEvent(formData: FormData) {
@@ -12,6 +13,9 @@ export default function NewEventPage() {
     } = await supabase.auth.getUser();
     if (!user) redirect('/login');
 
+    const rawPixKey = String(formData.get('pix_key') ?? '');
+    const normalizedPixKey = normalizePixKey(rawPixKey);
+
     const parsed = eventCreateSchema.parse({
       title: formData.get('title'),
       description: formData.get('description') ?? '',
@@ -19,10 +23,10 @@ export default function NewEventPage() {
       location_text: formData.get('location_text') ?? '',
       location_maps_url: formData.get('location_maps_url') ?? '',
       plan_tier: (formData.get('plan_tier') as string) ?? 'basic',
-      pix_key: formData.get('pix_key') as string
+      pix_key: normalizedPixKey
     });
 
-    // garante que existe pix_key no perfil (Fase 1)
+    // garante que existe pix_key no perfil (Fase 1) — sempre normalizada
     await supabase
       .from('profiles')
       .update({ pix_key: parsed.pix_key })
