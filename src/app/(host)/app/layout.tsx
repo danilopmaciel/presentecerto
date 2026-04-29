@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
+import { isAdminEmail } from '@/lib/admin';
 
 export default async function HostLayout({ children }: { children: React.ReactNode }) {
   const supabase = await createClient();
@@ -9,6 +10,18 @@ export default async function HostLayout({ children }: { children: React.ReactNo
   } = await supabase.auth.getUser();
 
   if (!user) redirect('/login');
+
+  const isAdmin = isAdminEmail(user.email);
+
+  // Conta pendentes pra mostrar um badge no link "Admin"
+  let pendingCount = 0;
+  if (isAdmin) {
+    const { count } = await supabase
+      .from('events')
+      .select('id', { count: 'exact', head: true })
+      .eq('plan_payment_status', 'paid_claimed');
+    pendingCount = count ?? 0;
+  }
 
   async function signOut() {
     'use server';
@@ -25,6 +38,19 @@ export default async function HostLayout({ children }: { children: React.ReactNo
             PresenteCerto
           </Link>
           <div className="flex items-center gap-4 text-sm">
+            {isAdmin && (
+              <Link
+                href="/app/admin"
+                className="relative rounded-md border border-yellow-300 bg-yellow-50 px-3 py-1.5 font-medium text-yellow-900 hover:bg-yellow-100"
+              >
+                Admin
+                {pendingCount > 0 && (
+                  <span className="ml-1.5 inline-flex h-5 min-w-[20px] items-center justify-center rounded-full bg-red-600 px-1.5 text-[11px] font-semibold text-white">
+                    {pendingCount}
+                  </span>
+                )}
+              </Link>
+            )}
             <span className="text-gray-600">{user.email}</span>
             <form action={signOut}>
               <button className="rounded-md border border-gray-300 px-3 py-1.5 hover:bg-gray-50">

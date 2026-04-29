@@ -17,6 +17,7 @@ import {
 } from '@/components/GiftSuggestionsEditor';
 import { PixKeyEditor } from '@/components/PixKeyEditor';
 import { normalizePixKey } from '@/lib/pix-key';
+import { notifyAdmin, escapeHtml } from '@/lib/notify';
 
 export default async function EventDetailPage({
   params
@@ -363,13 +364,40 @@ export default async function EventDetailPage({
   async function markPlanPaidByHost() {
     'use server';
     // Anfitrião declara "já paguei" — vai pra estado 'paid_claimed'.
-    // Você (operador) confirma manualmente em uma tela admin ou direto no SQL
-    // quando o Pix cair na sua conta. Só depois disso o evento pode publicar.
+    // Você (operador) confirma no painel /app/admin quando o Pix cair.
     const supabase = await createClient();
+    const {
+      data: { user }
+    } = await supabase.auth.getUser();
+    if (!user) return;
+
+    const { data: ev } = await supabase
+      .from('events')
+      .select('owner_id, title, plan_tier, plan_fee_cents, plan_pix_txid')
+      .eq('id', eventId)
+      .single();
+    if (!ev || ev.owner_id !== user.id) return;
+
     await supabase
       .from('events')
       .update({ plan_payment_status: 'paid_claimed' })
       .eq('id', eventId);
+    revalidatePath(`/app/eventos/${eventId}`);
+    revalidatePath('/app/admin');
+
+    // Notifica o admin (Telegram). Não trava o request se as ENVs faltarem.
+    const valor = (ev.plan_fee_cents / 100).toFixed(2).replace('.', ',');
+    const texto = [
+      `💰 Novo pagamento <b>aguardando confirmação</b>`,
+      `Evento: ${escapeHtml(ev.title)} (${ev.plan_tier === 'themed' ? 'Temático' : 'Básico'})`,
+      `Valor: R$ ${valor}`,
+      `Anfitrião: ${escapeHtml(user.email ?? '')}`,
+      ev.plan_pix_txid ? `txid: <code>${escapeHtml(ev.plan_pix_txid)}</code>` : '',
+      `→ Confira no app do banco e aprove em /app/admin`
+    ]
+      .filter(Boolean)
+      .join('\n');
+    await notifyAdmin(texto);
   }
 
   async function publish() {
