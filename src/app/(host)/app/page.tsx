@@ -1,12 +1,19 @@
 import Link from 'next/link';
+import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { formatBRL } from '@/lib/utils';
 
 export default async function MyEventsPage() {
   const supabase = await createClient();
+  const {
+    data: { user }
+  } = await supabase.auth.getUser();
+  if (!user) redirect('/login');
+
   const { data: events } = await supabase
     .from('events')
     .select('id, slug, title, starts_at, status, plan_tier, plan_fee_cents, plan_payment_status')
+    .eq('owner_id', user.id)
     .order('starts_at', { ascending: false });
 
   return (

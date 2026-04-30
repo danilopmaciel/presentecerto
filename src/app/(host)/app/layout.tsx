@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
-import { createClient } from '@/lib/supabase/server';
+import { createClient, createAdminClient } from '@/lib/supabase/server';
 import { isAdminEmail } from '@/lib/admin';
 
 export default async function HostLayout({ children }: { children: React.ReactNode }) {
@@ -13,10 +13,12 @@ export default async function HostLayout({ children }: { children: React.ReactNo
 
   const isAdmin = isAdminEmail(user.email);
 
-  // Conta pendentes pra mostrar um badge no link "Admin"
+  // Conta pendentes pra mostrar um badge no link "Admin".
+  // Usa admin client porque o admin precisa enxergar todos os eventos (não só os dele).
   let pendingCount = 0;
   if (isAdmin) {
-    const { count } = await supabase
+    const adminCli = createAdminClient();
+    const { count } = await adminCli
       .from('events')
       .select('id', { count: 'exact', head: true })
       .eq('plan_payment_status', 'paid_claimed');

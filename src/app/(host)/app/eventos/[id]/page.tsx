@@ -359,6 +359,7 @@ export default async function EventDetailPage({
         status: 'awaiting_payment'
       })
       .eq('id', ev.id);
+    revalidatePath(`/app/eventos/${eventId}`);
   }
 
   async function markPlanPaidByHost() {
@@ -414,6 +415,7 @@ export default async function EventDetailPage({
       .from('events')
       .update({ status: 'published', published_at: new Date().toISOString() })
       .eq('id', eventId);
+    revalidatePath(`/app/eventos/${eventId}`);
   }
 
   async function waiveAndPublish() {
@@ -429,6 +431,7 @@ export default async function EventDetailPage({
         published_at: new Date().toISOString()
       })
       .eq('id', eventId);
+    revalidatePath(`/app/eventos/${eventId}`);
   }
 
   // --- Render ----------------------------------------------------------------
