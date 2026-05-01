@@ -51,9 +51,22 @@ export default async function AdminPage() {
     .order('plan_paid_at', { ascending: false, nullsFirst: false })
     .limit(20);
 
+  // Pedidos de reembolso pendentes
+  const { data: pendingRefunds } = await admin
+    .from('user_credits')
+    .select(
+      'id, user_id, amount_cents, source_event_title, refund_pix_key, refund_note, refund_requested_at, created_at'
+    )
+    .eq('status', 'refund_requested')
+    .order('refund_requested_at', { ascending: true });
+
   // Resolve nome/email dos donos
   const ownerIds = Array.from(
-    new Set([...(pending ?? []), ...(recentPaid ?? [])].map((e) => e.owner_id))
+    new Set([
+      ...(pending ?? []).map((e) => e.owner_id),
+      ...(recentPaid ?? []).map((e) => e.owner_id),
+      ...(pendingRefunds ?? []).map((c) => c.user_id)
+    ])
   );
   const { data: profiles } = ownerIds.length
     ? await admin
@@ -123,6 +136,52 @@ export default async function AdminPage() {
       );
     }
     revalidatePath('/app/admin');
+  }
+
+  async function markRefunded(formData: FormData) {
+    'use server';
+    const supabase = await createClient();
+    const {
+      data: { user }
+    } = await supabase.auth.getUser();
+    if (!user || !isAdminEmail(user.email)) return;
+
+    const creditId = String(formData.get('credit_id') ?? '');
+    if (!creditId) return;
+
+    const adminCli = createAdminClient();
+    await adminCli
+      .from('user_credits')
+      .update({ status: 'refunded', refunded_at: new Date().toISOString() })
+      .eq('id', creditId);
+    revalidatePath('/app/admin');
+    revalidatePath('/app/conta');
+  }
+
+  async function denyRefund(formData: FormData) {
+    'use server';
+    const supabase = await createClient();
+    const {
+      data: { user }
+    } = await supabase.auth.getUser();
+    if (!user || !isAdminEmail(user.email)) return;
+
+    const creditId = String(formData.get('credit_id') ?? '');
+    if (!creditId) return;
+
+    // Volta pro estado disponível pra anfitrião poder pedir de novo / discutir
+    const adminCli = createAdminClient();
+    await adminCli
+      .from('user_credits')
+      .update({
+        status: 'available',
+        refund_pix_key: null,
+        refund_requested_at: null,
+        refund_note: null
+      })
+      .eq('id', creditId);
+    revalidatePath('/app/admin');
+    revalidatePath('/app/conta');
   }
 
   // ---- Render -------------------------------------------------------------
@@ -210,11 +269,71 @@ export default async function AdminPage() {
       </div>
 
       {/* Stats */}
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className="grid gap-4 md:grid-cols-4">
         <Stat label="Aguardando confirmação" value={String(pending?.length ?? 0)} />
         <Stat label="Total a confirmar" value={formatBRL(totalPending)} />
+        <Stat label="Reembolsos pendentes" value={String(pendingRefunds?.length ?? 0)} />
         <Stat label="Eventos pagos (lista)" value={String(recentPaid?.length ?? 0)} />
       </div>
+
+      {/* Pedidos de reembolso */}
+      {pendingRefunds && pendingRefunds.length > 0 && (
+        <section>
+          <h2 className="text-lg font-semibold">Pedidos de reembolso</h2>
+          <ul className="mt-2 divide-y divide-amber-200 rounded-md border border-amber-300 bg-amber-50">
+            {pendingRefunds.map((c) => {
+              const prof = profById.get(c.user_id);
+              return (
+                <li
+                  key={c.id}
+                  className="flex flex-wrap items-start justify-between gap-3 p-4"
+                >
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2">
+                      <span className="font-semibold">{formatBRL(c.amount_cents)}</span>
+                      <span className="rounded-full bg-amber-200 px-2 py-0.5 text-[10px] font-semibold uppercase text-amber-900">
+                        Pix solicitado
+                      </span>
+                    </div>
+                    <div className="mt-0.5 text-xs text-gray-700">
+                      {prof?.full_name ?? 'sem nome'}
+                      {' · evento: '}
+                      {c.source_event_title ?? '—'}
+                    </div>
+                    <div className="mt-0.5 text-xs text-gray-600">
+                      Pagar via Pix:{' '}
+                      <span className="font-mono">{c.refund_pix_key}</span>
+                    </div>
+                    {c.refund_note && (
+                      <div className="mt-1 italic text-xs text-gray-700">"{c.refund_note}"</div>
+                    )}
+                    <div className="mt-0.5 text-[11px] text-gray-500">
+                      Pedido em{' '}
+                      {c.refund_requested_at
+                        ? new Date(c.refund_requested_at).toLocaleString('pt-BR')
+                        : '—'}
+                    </div>
+                  </div>
+                  <div className="flex shrink-0 gap-2">
+                    <form action={markRefunded}>
+                      <input type="hidden" name="credit_id" value={c.id} />
+                      <button className="rounded-md bg-green-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-green-700">
+                        ✓ Marcar como pago
+                      </button>
+                    </form>
+                    <form action={denyRefund}>
+                      <input type="hidden" name="credit_id" value={c.id} />
+                      <button className="rounded-md border border-gray-300 bg-white px-3 py-1.5 text-xs text-gray-700 hover:bg-gray-50">
+                        Negar
+                      </button>
+                    </form>
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+        </section>
+      )}
 
       {/* Pendentes */}
       <section>

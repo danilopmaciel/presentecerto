@@ -16,6 +16,7 @@ import {
   type Suggestion
 } from '@/components/GiftSuggestionsEditor';
 import { PixKeyEditor } from '@/components/PixKeyEditor';
+import { PlanSwitcher } from '@/components/PlanSwitcher';
 import { normalizePixKey } from '@/lib/pix-key';
 import { notifyAdmin, escapeHtml } from '@/lib/notify';
 
@@ -203,6 +204,51 @@ export default async function EventDetailPage({
     revalidatePath(`/app/eventos/${eventId}`);
   }
 
+  async function changePlan(formData: FormData): Promise<{ error?: string } | void> {
+    'use server';
+    const supabase = await createClient();
+    const {
+      data: { user }
+    } = await supabase.auth.getUser();
+    if (!user) return { error: 'Não autenticado.' };
+
+    const target = String(formData.get('plan_tier') ?? '');
+    if (target !== 'basic' && target !== 'themed') return { error: 'Plano inválido.' };
+
+    const { data: ev } = await supabase
+      .from('events')
+      .select('owner_id, plan_payment_status, plan_tier')
+      .eq('id', eventId)
+      .single();
+    if (!ev || ev.owner_id !== user.id) return { error: 'Sem permissão.' };
+
+    if (
+      ev.plan_payment_status === 'paid' ||
+      ev.plan_payment_status === 'paid_claimed' ||
+      ev.plan_payment_status === 'waived'
+    ) {
+      return {
+        error:
+          'Esse plano já foi pago. Fala com o suporte pra ajustar a diferença manualmente.'
+      };
+    }
+
+    if (ev.plan_tier === target) return; // já está nesse plano
+
+    const newFee = target === 'themed' ? 5000 : 2000;
+    await supabase
+      .from('events')
+      .update({
+        plan_tier: target,
+        plan_fee_cents: newFee,
+        // Invalida o Pix antigo se já existia — vai precisar gerar de novo com o novo valor
+        plan_pix_payload: null,
+        plan_pix_txid: null
+      })
+      .eq('id', eventId);
+    revalidatePath(`/app/eventos/${eventId}`);
+  }
+
   async function updatePixKey(formData: FormData): Promise<{ error?: string; pix_key?: string }> {
     'use server';
     const supabase = await createClient();
@@ -311,18 +357,42 @@ export default async function EventDetailPage({
 
     const { data: ev } = await supabase
       .from('events')
-      .select('owner_id')
+      .select('id, owner_id, title, plan_payment_status, plan_fee_cents')
       .eq('id', eventId)
       .single();
     if (!ev || ev.owner_id !== user.id) return;
 
+    // Se já foi pago, gera crédito antes de excluir
+    const wasPaid =
+      ev.plan_payment_status === 'paid' || ev.plan_payment_status === 'paid_claimed';
+    if (wasPaid) {
+      await supabase.from('user_credits').insert({
+        user_id: user.id,
+        amount_cents: ev.plan_fee_cents,
+        reason: 'event_deleted_paid',
+        source_event_id: ev.id,
+        source_event_title: ev.title,
+        status: 'available'
+      });
+
+      // Notifica o admin (você) — o anfitrião acabou de virar credor
+      await notifyAdmin(
+        [
+          `🪙 Crédito gerado por exclusão de evento pago`,
+          `Anfitrião: ${escapeHtml(user.email ?? '')}`,
+          `Evento: ${escapeHtml(ev.title)}`,
+          `Valor: R$ ${(ev.plan_fee_cents / 100).toFixed(2).replace('.', ',')}`,
+          `Acompanhe pedidos de reembolso em /app/admin`
+        ].join('\n')
+      );
+    }
+
     // Delete cascata — depende do ON DELETE CASCADE definido nas FKs.
-    // Se o schema não tiver cascade, apaga filhos antes.
     await supabase.from('gift_purchases').delete().eq('event_id', eventId);
     await supabase.from('gift_items').delete().eq('event_id', eventId);
     await supabase.from('rsvps').delete().eq('event_id', eventId);
     await supabase.from('events').delete().eq('id', eventId);
-    redirect('/app');
+    redirect(wasPaid ? '/app/conta?credit=1' : '/app');
   }
 
   async function generatePlanPix() {
@@ -467,7 +537,7 @@ export default async function EventDetailPage({
         </a>
       </div>
 
-      {/* Configuração de pagamento — chave Pix do anfitrião */}
+      {/* Configuração de pagamento — chave Pix + plano */}
       <section className="rounded-lg border border-gray-200 bg-white p-6">
         <h2 className="font-semibold">Configuração de pagamento</h2>
         <p className="mt-1 text-sm text-gray-600">
@@ -476,6 +546,16 @@ export default async function EventDetailPage({
         </p>
         <div className="mt-4">
           <PixKeyEditor current={profile?.pix_key ?? null} onSave={updatePixKey} />
+        </div>
+        <div className="mt-6 border-t border-gray-100 pt-4">
+          <div className="text-xs uppercase tracking-wide text-gray-500">Plano</div>
+          <div className="mt-2">
+            <PlanSwitcher
+              currentTier={(event.plan_tier === 'themed' ? 'themed' : 'basic') as 'basic' | 'themed'}
+              paymentStatus={event.plan_payment_status}
+              onChange={changePlan}
+            />
+          </div>
         </div>
       </section>
 

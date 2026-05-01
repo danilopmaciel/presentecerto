@@ -53,6 +53,12 @@ export default async function HostLayout({ children }: { children: React.ReactNo
                 )}
               </Link>
             )}
+            <Link
+              href="/app/conta"
+              className="rounded-md px-3 py-1.5 text-gray-700 hover:bg-gray-100"
+            >
+              Conta
+            </Link>
             <span className="text-gray-600">{user.email}</span>
             <form action={signOut}>
               <button className="rounded-md border border-gray-300 px-3 py-1.5 hover:bg-gray-50">

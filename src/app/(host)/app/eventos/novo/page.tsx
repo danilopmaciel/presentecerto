@@ -4,7 +4,14 @@ import { uniqueSlug } from '@/lib/utils';
 import { eventCreateSchema } from '@/lib/validation/schemas';
 import { normalizePixKey } from '@/lib/pix-key';
 
-export default function NewEventPage() {
+export default async function NewEventPage({
+  searchParams
+}: {
+  searchParams: Promise<{ plan?: string }>;
+}) {
+  const sp = await searchParams;
+  const initialPlan = sp.plan === 'themed' ? 'themed' : 'basic';
+
   async function createEvent(formData: FormData) {
     'use server';
     const supabase = await createClient();
@@ -123,7 +130,12 @@ export default function NewEventPage() {
         <fieldset className="rounded-md border border-gray-200 p-4">
           <legend className="px-2 text-sm font-medium">Plano</legend>
           <label className="flex items-start gap-3 py-2">
-            <input type="radio" name="plan_tier" value="basic" defaultChecked />
+            <input
+              type="radio"
+              name="plan_tier"
+              value="basic"
+              defaultChecked={initialPlan === 'basic'}
+            />
             <div>
               <div className="font-medium">Básico — R$ 20</div>
               <div className="text-sm text-gray-600">
@@ -132,11 +144,16 @@ export default function NewEventPage() {
             </div>
           </label>
           <label className="flex items-start gap-3 py-2">
-            <input type="radio" name="plan_tier" value="themed" />
+            <input
+              type="radio"
+              name="plan_tier"
+              value="themed"
+              defaultChecked={initialPlan === 'themed'}
+            />
             <div>
               <div className="font-medium">Temático — R$ 50</div>
               <div className="text-sm text-gray-600">
-                Tudo do básico + tema personalizado + convites e lembretes por WhatsApp/e-mail.
+                Tudo do básico + tema personalizado com hero art ilustrado.
               </div>
             </div>
           </label>
