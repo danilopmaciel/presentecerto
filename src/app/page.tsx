@@ -29,18 +29,21 @@ export default function LandingPage() {
         </p>
         <div className="mt-10 flex flex-col items-center justify-center gap-3 sm:flex-row">
           <Link
-            href="#planos"
+            href="/exemplo"
             className="rounded-md bg-brand-500 px-6 py-3 text-white shadow hover:bg-brand-600"
           >
-            Ver planos
+            Ver exemplo de evento
           </Link>
           <Link
-            href="/login"
+            href="#planos"
             className="rounded-md border border-brand-300 bg-white px-6 py-3 text-brand-700 hover:bg-brand-50"
           >
-            Entrar
+            Comparar planos
           </Link>
         </div>
+        <p className="mt-3 text-xs text-gray-500">
+          Você monta o evento todo grátis. Só paga quando quiser publicar pros convidados.
+        </p>
       </section>
 
       {/* Comparativo de planos */}

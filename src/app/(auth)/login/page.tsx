@@ -1,13 +1,33 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { createClient } from '@/lib/supabase/client';
+
+const ERROR_LABELS: Record<string, string> = {
+  oauth: 'O Google retornou um erro durante o login.',
+  missing_code:
+    'Faltou o código de autorização do Google. Pode acontecer se você fechou a aba ou o link expirou.',
+  exchange:
+    'Não consegui trocar o código pela sessão. Geralmente é cookie de terceiros bloqueado, ou você abriu o link em um navegador diferente do que iniciou o login.',
+  callback: 'Algo deu errado no callback do Google. Tente de novo.'
+};
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [status, setStatus] = useState<'idle' | 'loading' | 'sent' | 'error'>('idle');
   const [googleLoading, setGoogleLoading] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+  const [authError, setAuthError] = useState<{ kind: string; reason: string | null } | null>(
+    null
+  );
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const kind = params.get('error');
+    if (kind) {
+      setAuthError({ kind, reason: params.get('reason') });
+    }
+  }, []);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -51,6 +71,24 @@ export default function LoginPage() {
       <p className="mt-2 text-sm text-gray-600">
         Use sua conta Google ou receba um link mágico por e-mail. Sem senha.
       </p>
+
+      {authError && (
+        <div className="mt-4 space-y-2 rounded-md border border-red-200 bg-red-50 p-3 text-xs text-red-800">
+          <div className="font-semibold">Login falhou</div>
+          <div>{ERROR_LABELS[authError.kind] ?? 'Algo deu errado.'}</div>
+          {authError.reason && (
+            <div className="break-all rounded border border-red-200 bg-white p-2 font-mono text-[11px] text-red-700">
+              {authError.reason}
+            </div>
+          )}
+          <ul className="list-disc pl-5 text-[11px] text-red-700">
+            <li>Não use modo anônimo/aba privada (bloqueia cookies)</li>
+            <li>Termine o login no mesmo navegador onde clicou em "Entrar com Google"</li>
+            <li>Desbloqueie cookies de terceiros pra google.com e supabase.co</li>
+            <li>Não recarregue a página depois que o Google te trouxer de volta</li>
+          </ul>
+        </div>
+      )}
 
       <button
         type="button"
