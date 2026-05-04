@@ -2,6 +2,7 @@
 
 import { useRef, useState } from 'react';
 import { uploadEventImage } from '@/lib/upload';
+import { AiImageModal } from './AiImageModal';
 
 type Props = {
   value: string;
@@ -9,6 +10,10 @@ type Props = {
   scope: 'bg' | 'gift';
   /** Permite o botão "🔍 Buscar" que extrai og:image (só faz sentido pra gift) */
   enableUrlFetch?: boolean;
+  /** Habilita o botão "✨ Gerar com IA" — exige eventId pra funcionar */
+  enableAi?: boolean;
+  /** Necessário pro botão IA (a quota é por evento) */
+  eventId?: string;
   placeholder?: string;
   className?: string;
 };
@@ -26,6 +31,8 @@ export function ImagePicker({
   onChange,
   scope,
   enableUrlFetch = false,
+  enableAi = false,
+  eventId,
   placeholder = 'URL da imagem',
   className
 }: Props) {
@@ -33,6 +40,7 @@ export function ImagePicker({
   const cameraInputRef = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState<'fetch' | 'upload' | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [aiOpen, setAiOpen] = useState(false);
 
   async function handleFile(file: File | null) {
     if (!file) return;
@@ -131,7 +139,32 @@ export function ImagePicker({
         >
           📷 Tirar foto
         </button>
+        {enableAi && (
+          <button
+            type="button"
+            onClick={() => setAiOpen(true)}
+            disabled={!!busy || !eventId}
+            title={
+              !eventId
+                ? 'Salve o evento antes de usar IA'
+                : 'Gerar imagem por IA a partir de uma descrição'
+            }
+            className="shrink-0 rounded-md bg-gradient-to-r from-brand-500 to-purple-500 px-3 py-2 text-xs font-semibold text-white shadow-sm hover:opacity-95 disabled:opacity-60"
+          >
+            ✨ Gerar com IA
+          </button>
+        )}
       </div>
+
+      {enableAi && (
+        <AiImageModal
+          open={aiOpen}
+          onClose={() => setAiOpen(false)}
+          onPick={(url) => onChange(url)}
+          scope={scope}
+          eventId={eventId}
+        />
+      )}
 
       {error && (
         <div className="rounded-md border border-red-200 bg-red-50 p-2 text-xs text-red-700">

@@ -17,7 +17,6 @@ import {
 } from '@/components/GiftSuggestionsEditor';
 import { PixKeyEditor } from '@/components/PixKeyEditor';
 import { PlanSwitcher } from '@/components/PlanSwitcher';
-import { CustomThemeEditor } from '@/components/CustomThemeEditor';
 import { normalizePixKey } from '@/lib/pix-key';
 import { notifyAdmin, escapeHtml } from '@/lib/notify';
 
@@ -621,27 +620,18 @@ export default async function EventDetailPage({
         <section className="rounded-lg border border-gray-200 bg-white p-6">
           <h2 className="font-semibold">Tema da página</h2>
           <p className="mt-1 text-sm text-gray-600">
-            Escolha um dos 12 temas prontos abaixo, ou personalize com uma imagem sua.
+            Escolha um dos 12 temas prontos ou clique em <strong>✨ Personalizado</strong> pra
+            usar uma imagem sua — a paleta sai automática.
           </p>
-          <ThemePicker currentTheme={event.theme ?? 'default'} onSelect={setTheme} />
-
-          <div className="mt-8 border-t border-gray-100 pt-6">
-            <h3 className="text-sm font-semibold uppercase tracking-wide text-gray-700">
-              ✨ Personalização avançada
-            </h3>
-            <p className="mt-1 text-xs text-gray-500">
-              Carregue uma imagem (foto da decoração, arte do tema, capa) — a paleta da página é
-              extraída automaticamente da imagem. Sobrepõe o tema escolhido acima.
-            </p>
-            <div className="mt-4">
-              <CustomThemeEditor
-                currentBgUrl={event.custom_bg_path ?? null}
-                currentPalette={event.custom_palette ?? null}
-                onSave={saveCustomTheme}
-                onClear={clearCustomTheme}
-              />
-            </div>
-          </div>
+          <ThemePicker
+            currentTheme={event.theme ?? 'default'}
+            onSelect={setTheme}
+            customBgUrl={event.custom_bg_path ?? null}
+            customPalette={event.custom_palette ?? null}
+            onSaveCustom={saveCustomTheme}
+            onClearCustom={clearCustomTheme}
+            eventId={eventId}
+          />
         </section>
       )}
 
@@ -766,13 +756,19 @@ export default async function EventDetailPage({
                 sold={sold}
                 onUpdate={updateGift}
                 onDelete={deleteGift}
+                eventId={eventId}
+                enableAi={event.plan_tier === 'themed'}
               />
             );
           })}
         </div>
 
         <div className="mt-4">
-          <GiftAddForm onAdd={addGift} />
+          <GiftAddForm
+            onAdd={addGift}
+            eventId={eventId}
+            enableAi={event.plan_tier === 'themed'}
+          />
         </div>
       </section>
 

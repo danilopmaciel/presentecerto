@@ -21,12 +21,16 @@ export function GiftRow({
   gift,
   sold,
   onUpdate,
-  onDelete
+  onDelete,
+  eventId,
+  enableAi = false
 }: {
   gift: GiftRowData;
   sold: number;
   onUpdate: Update;
   onDelete: Delete;
+  eventId?: string;
+  enableAi?: boolean;
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
@@ -92,6 +96,8 @@ export function GiftRow({
             onChange={setImageUrl}
             scope="gift"
             enableUrlFetch
+            enableAi={enableAi}
+            eventId={eventId}
             placeholder="URL da foto ou link do produto"
           />
         </div>

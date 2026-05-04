@@ -6,7 +6,15 @@ import { ImagePicker } from './ImagePicker';
 
 type AddGift = (formData: FormData) => Promise<void>;
 
-export function GiftAddForm({ onAdd }: { onAdd: AddGift }) {
+export function GiftAddForm({
+  onAdd,
+  eventId,
+  enableAi = false
+}: {
+  onAdd: AddGift;
+  eventId?: string;
+  enableAi?: boolean;
+}) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [imageUrl, setImageUrl] = useState('');
@@ -53,6 +61,8 @@ export function GiftAddForm({ onAdd }: { onAdd: AddGift }) {
             onChange={setImageUrl}
             scope="gift"
             enableUrlFetch
+            enableAi={enableAi}
+            eventId={eventId}
             placeholder="Link da loja ou da imagem"
           />
         </div>
