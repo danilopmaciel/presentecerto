@@ -16,8 +16,33 @@ export const dynamic = 'force-dynamic';
  */
 
 const MAX_PER_EVENT = 5;
-const GEMINI_MODEL = 'gemini-2.5-flash-image-preview';
-const GEMINI_ENDPOINT = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`;
+
+/**
+ * Modelos com suporte a image-out via `generateContent` no Google AI Studio.
+ * Tenta em ordem — cai no próximo se um der 404. Pode ser sobrescrito pela env
+ * `GEMINI_IMAGE_MODEL` (vírgulas separam alternativas).
+ *
+ *  • gemini-2.5-flash-image          → "Nano Banana" — estável, mais barato (default)
+ *  • gemini-3.1-flash-image-preview  → "Nano Banana 2" — preview, qualidade melhor
+ *  • gemini-3-pro-image-preview      → "Nano Banana Pro" — preview, mais caro
+ */
+const DEFAULT_MODELS = [
+  'gemini-2.5-flash-image',
+  'gemini-3.1-flash-image-preview',
+  'gemini-3-pro-image-preview'
+];
+
+function getModels(): string[] {
+  const envModels = (process.env.GEMINI_IMAGE_MODEL ?? '')
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean);
+  return envModels.length > 0 ? envModels : DEFAULT_MODELS;
+}
+
+function endpointFor(model: string) {
+  return `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
+}
 
 type Body = {
   prompt?: string;
@@ -96,41 +121,85 @@ export async function POST(request: Request) {
     'Composição limpa que funciona como capa/fundo de site.'
   ].join('\n');
 
-  // Chama o Gemini
-  let geminiRes: Response;
-  try {
-    geminiRes = await fetch(`${GEMINI_ENDPOINT}?key=${apiKey}`, {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({
-        contents: [
+  // Chama o Gemini — tenta cada modelo em ordem; 404 num modelo pula pro próximo.
+  const models = getModels();
+  const requestBody = JSON.stringify({
+    contents: [
+      {
+        parts: [{ text: fullPrompt }]
+      }
+    ],
+    generationConfig: {
+      responseModalities: ['IMAGE', 'TEXT']
+    }
+  });
+
+  let geminiRes: Response | null = null;
+  let modelUsed: string | null = null;
+  const triedErrors: { model: string; status: number; msg: string }[] = [];
+
+  for (const model of models) {
+    try {
+      const res = await fetch(`${endpointFor(model)}?key=${apiKey}`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: requestBody,
+        signal: AbortSignal.timeout(60_000)
+      });
+      if (res.ok) {
+        geminiRes = res;
+        modelUsed = model;
+        // eslint-disable-next-line no-console
+        console.log('[generate-image] using model', model);
+        break;
+      }
+      // 404 = modelo não existe nesse projeto/região → tenta o próximo
+      // 400 com "modelo" na msg também → tenta o próximo
+      const txt = await res.text();
+      triedErrors.push({ model, status: res.status, msg: txt.slice(0, 300) });
+      if (res.status === 404 || (res.status === 400 && /model/i.test(txt))) {
+        // eslint-disable-next-line no-console
+        console.warn(`[generate-image] model ${model} not available, trying next`);
+        continue;
+      }
+      // Outros erros (429, 500, 401, 403) — não adianta tentar outros modelos
+      // eslint-disable-next-line no-console
+      console.error('[generate-image] gemini error', model, res.status, txt);
+      if (res.status === 429) {
+        return NextResponse.json(
+          { error: 'API do Gemini atingiu limite. Tente em alguns minutos.' },
+          { status: 429 }
+        );
+      }
+      if (res.status === 401 || res.status === 403) {
+        return NextResponse.json(
           {
-            parts: [{ text: fullPrompt }]
-          }
-        ],
-        generationConfig: {
-          responseModalities: ['IMAGE', 'TEXT']
-        }
-      }),
-      signal: AbortSignal.timeout(60_000)
-    });
-  } catch (e: unknown) {
-    const msg = e instanceof Error ? e.message : 'falha ao chamar Gemini';
-    return NextResponse.json({ error: `Erro de rede: ${msg}` }, { status: 502 });
+            error:
+              'Chave de API inválida ou sem permissão. Verifique se ela tem acesso ao Generative Language API.'
+          },
+          { status: res.status }
+        );
+      }
+      return NextResponse.json(
+        { error: `Falha na geração (${res.status}). Tente outro prompt.` },
+        { status: 502 }
+      );
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : 'falha ao chamar Gemini';
+      triedErrors.push({ model, status: 0, msg });
+    }
   }
 
-  if (!geminiRes.ok) {
-    const txt = await geminiRes.text();
+  if (!geminiRes || !modelUsed) {
     // eslint-disable-next-line no-console
-    console.error('[generate-image] gemini error', geminiRes.status, txt);
-    if (geminiRes.status === 429) {
-      return NextResponse.json(
-        { error: 'API do Gemini atingiu limite. Tente em alguns minutos.' },
-        { status: 429 }
-      );
-    }
+    console.error('[generate-image] all models failed', JSON.stringify(triedErrors));
     return NextResponse.json(
-      { error: `Falha na geração (${geminiRes.status}). Tente outro prompt.` },
+      {
+        error:
+          'Nenhum modelo de imagem disponível na sua chave Gemini. ' +
+          'Confira no Google AI Studio quais modelos sua conta tem acesso e seta a env GEMINI_IMAGE_MODEL.',
+        debug: triedErrors
+      },
       { status: 502 }
     );
   }
