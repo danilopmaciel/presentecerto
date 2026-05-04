@@ -21,7 +21,7 @@ export default async function PublicEventPage({
 
   const { data: event } = await supabase
     .from('events')
-    .select('id, slug, owner_id, title, description, starts_at, location_text, location_maps_url, theme, status, plan_tier, gift_suggestions')
+    .select('id, slug, owner_id, title, description, starts_at, location_text, location_maps_url, theme, status, plan_tier, gift_suggestions, custom_bg_path, custom_palette')
     .eq('slug', slug)
     .single();
 
@@ -56,6 +56,19 @@ export default async function PublicEventPage({
     available: g.quota_total - (reservedMap.get(g.id) ?? 0)
   }));
 
+  // Lista de colaboradores: presentes confirmados (status=paid)
+  const giftTitleById = new Map((gifts ?? []).map((g) => [g.id, g.title]));
+  const { data: paidPurchases } = await supabase
+    .from('gift_purchases')
+    .select('buyer_name, gift_item_id, paid_at')
+    .eq('event_id', event.id)
+    .eq('status', 'paid')
+    .order('paid_at', { ascending: false });
+  const collaborators = (paidPurchases ?? []).map((p) => ({
+    name: p.buyer_name,
+    giftTitle: giftTitleById.get(p.gift_item_id) ?? 'Presente'
+  }));
+
   // Tema só aplica em plano Temático; Básico fica sempre no padrão
   const themeId = event.plan_tier === 'themed' ? event.theme ?? 'default' : 'default';
   const theme = getTheme(themeId);
@@ -66,9 +79,32 @@ export default async function PublicEventPage({
     ? (event.gift_suggestions as Suggestion[])
     : [];
 
+  // Tema personalizado (plano temático com bg image enviado)
+  const customBgUrl: string | null =
+    event.plan_tier === 'themed' && event.custom_bg_path ? event.custom_bg_path : null;
+  const customPalette =
+    customBgUrl && event.custom_palette
+      ? (event.custom_palette as { accent: string; bg: string; text: string })
+      : null;
+  const themeAccent = customPalette?.accent ?? theme.accent;
+  const themeTextColor = customPalette?.text ?? null;
+  const themeCardClass = customPalette ? 'bg-white/95 ring-1 ring-black/10 backdrop-blur' : theme.cardClass;
+
   return (
-    <main className={`relative min-h-screen overflow-hidden ${theme.pageBg}`}>
-      {theme.pattern && (
+    <main
+      className={`relative min-h-screen overflow-hidden ${customBgUrl ? '' : theme.pageBg}`}
+      style={
+        customBgUrl
+          ? {
+              backgroundImage: `linear-gradient(rgba(255,255,255,0.6), rgba(255,255,255,0.6)), url(${customBgUrl})`,
+              backgroundSize: 'cover',
+              backgroundPosition: 'center',
+              backgroundAttachment: 'fixed'
+            }
+          : undefined
+      }
+    >
+      {!customBgUrl && theme.pattern && (
         <div
           aria-hidden
           className="pointer-events-none absolute inset-0 opacity-50"
@@ -81,16 +117,21 @@ export default async function PublicEventPage({
         </div>
       )}
       <div className="relative mx-auto max-w-2xl px-6 py-10">
-        {Decoration && <Decoration />}
+        {!customBgUrl && Decoration && <Decoration />}
 
-        {HeroArt && (
+        {!customBgUrl && HeroArt && (
           <div className="mb-4">
             <HeroArt />
           </div>
         )}
 
         <header className="relative text-center">
-          <h1 className={`text-4xl font-extrabold tracking-tight drop-shadow-sm ${theme.titleColor}`}>
+          <h1
+            className={`text-4xl font-extrabold tracking-tight drop-shadow-sm ${
+              themeTextColor ? '' : theme.titleColor
+            }`}
+            style={themeTextColor ? { color: themeTextColor } : undefined}
+          >
             {event.title}
           </h1>
           <p className="mt-2 text-gray-700">
@@ -123,9 +164,37 @@ export default async function PublicEventPage({
         <RsvpAndGiftForm
           eventId={event.id}
           gifts={giftsWithAvail}
-          cardClass={theme.cardClass}
-          accent={theme.accent}
+          cardClass={themeCardClass}
+          accent={themeAccent}
         />
+
+        {/* Colaboradores — quem já presenteou */}
+        {collaborators.length > 0 && (
+          <section className={`mt-12 rounded-lg p-5 shadow-sm ${themeCardClass}`}>
+            <div className="flex items-center gap-2">
+              <span
+                className="inline-flex h-7 w-7 items-center justify-center rounded-full text-base text-white"
+                style={{ background: themeAccent }}
+              >
+                💝
+              </span>
+              <h2 className="text-lg font-semibold">Quem já colaborou</h2>
+            </div>
+            <p className="mt-1 text-xs text-gray-600">
+              Um obrigado especial pra todo mundo que ajudou:
+            </p>
+            <ul className="mt-3 divide-y divide-gray-100">
+              {collaborators.map((c, i) => (
+                <li key={i} className="flex items-center justify-between gap-3 py-2 text-sm">
+                  <span className="font-medium text-gray-900">{c.name}</span>
+                  <span className="truncate text-right text-xs text-gray-500">
+                    {c.giftTitle}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
 
         <footer className="mt-12 text-center text-xs text-gray-500">
           Página criada com{' '}

@@ -3,6 +3,7 @@
 import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { formatBRL } from '@/lib/utils';
+import { ImagePicker } from './ImagePicker';
 
 export type GiftRowData = {
   id: string;
@@ -32,33 +33,7 @@ export function GiftRow({
   const [editing, setEditing] = useState(false);
   const [confirmDel, setConfirmDel] = useState(false);
   const [imageUrl, setImageUrl] = useState(gift.image_path ?? '');
-  const [previewLoading, setPreviewLoading] = useState(false);
-  const [previewError, setPreviewError] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-
-  async function fetchPreview() {
-    const url = imageUrl.trim();
-    if (!url) return;
-    setPreviewLoading(true);
-    setPreviewError(null);
-    try {
-      const res = await fetch('/api/fetch-og-image', {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ url })
-      });
-      const json = await res.json();
-      if (!res.ok || !json.ok) {
-        setPreviewError(json.error ?? 'Não consegui pegar a imagem.');
-        return;
-      }
-      setImageUrl(json.image_url);
-    } catch (e: unknown) {
-      setPreviewError(e instanceof Error ? e.message : 'Erro ao buscar');
-    } finally {
-      setPreviewLoading(false);
-    }
-  }
 
   function submitEdit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -111,42 +86,14 @@ export function GiftRow({
           className="w-full rounded-md border border-gray-300 bg-white px-3 py-2"
         />
 
-        <div className="space-y-2">
-          <div className="flex flex-wrap gap-2">
-            <input
-              name="image_path"
-              type="url"
-              value={imageUrl}
-              onChange={(e) => {
-                setImageUrl(e.target.value);
-                setPreviewError(null);
-              }}
-              placeholder="URL da foto ou link do produto"
-              className="min-w-0 flex-1 rounded-md border border-gray-300 bg-white px-3 py-2"
-            />
-            <button
-              type="button"
-              onClick={fetchPreview}
-              disabled={previewLoading || !imageUrl.trim()}
-              className="shrink-0 rounded-md border border-brand-300 bg-white px-3 py-2 text-sm text-brand-700 hover:bg-brand-50 disabled:opacity-60"
-            >
-              {previewLoading ? 'Buscando...' : '🔍 Buscar'}
-            </button>
-          </div>
-          {previewError && (
-            <div className="rounded-md border border-red-200 bg-red-50 p-2 text-xs text-red-700">
-              {previewError}
-            </div>
-          )}
-          {imageUrl && (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={imageUrl}
-              alt="prévia"
-              className="h-20 w-20 rounded object-cover"
-              onError={() => setPreviewError('Imagem não carregou.')}
-            />
-          )}
+        <div>
+          <ImagePicker
+            value={imageUrl}
+            onChange={setImageUrl}
+            scope="gift"
+            enableUrlFetch
+            placeholder="URL da foto ou link do produto"
+          />
         </div>
 
         <div className="grid grid-cols-2 gap-3">
@@ -195,7 +142,7 @@ export function GiftRow({
             onClick={() => {
               setEditing(false);
               setImageUrl(gift.image_path ?? '');
-              setPreviewError(null);
+              setError(null);
             }}
             className="rounded-md border border-gray-300 bg-white px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
           >

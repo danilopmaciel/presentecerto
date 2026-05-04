@@ -11,13 +11,28 @@ const DEMO_EVENT = {
   location_text: 'Buffet Pequeno Príncipe — São Paulo, SP'
 };
 
+// SVGs inline em data: URI — não dependem de CDN externa, sempre renderizam.
+function svgGift(label: string, bgFrom: string, bgTo: string, emoji: string): string {
+  const svg = `<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 200'>
+    <defs>
+      <linearGradient id='g' x1='0' y1='0' x2='1' y2='1'>
+        <stop offset='0' stop-color='${bgFrom}'/>
+        <stop offset='1' stop-color='${bgTo}'/>
+      </linearGradient>
+    </defs>
+    <rect width='200' height='200' fill='url(#g)'/>
+    <text x='100' y='110' text-anchor='middle' font-size='80' dominant-baseline='middle'>${emoji}</text>
+    <text x='100' y='170' text-anchor='middle' font-size='14' font-family='system-ui, -apple-system, sans-serif' font-weight='600' fill='#1f2937'>${label}</text>
+  </svg>`;
+  return `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
+}
+
 const DEMO_GIFTS = [
   {
     id: 'g1',
     title: 'Triciclo elétrico',
     description: 'Cotas pra completar o presentão',
-    image_path:
-      'https://images.unsplash.com/photo-1520975922323-2c2bd7af8d97?w=400&q=80&auto=format',
+    image_path: svgGift('Triciclo', '#fde68a', '#fb923c', '🛺'),
     quota_value_cents: 5000,
     quota_total: 12,
     reserved: 8
@@ -26,8 +41,7 @@ const DEMO_GIFTS = [
     id: 'g2',
     title: 'Pista de carrinhos com loop',
     description: 'A pista com 4 carrinhos',
-    image_path:
-      'https://images.unsplash.com/photo-1599751449128-eb7249c3d6b1?w=400&q=80&auto=format',
+    image_path: svgGift('Pista', '#bfdbfe', '#3b82f6', '🏎️'),
     quota_value_cents: 3000,
     quota_total: 6,
     reserved: 6
@@ -36,8 +50,7 @@ const DEMO_GIFTS = [
     id: 'g3',
     title: 'Caixa de blocos de montar',
     description: 'Estimula motricidade fina',
-    image_path:
-      'https://images.unsplash.com/photo-1596461404969-9ae70f2830c1?w=400&q=80&auto=format',
+    image_path: svgGift('Blocos', '#bbf7d0', '#16a34a', '🧱'),
     quota_value_cents: 4000,
     quota_total: 5,
     reserved: 2
@@ -46,8 +59,7 @@ const DEMO_GIFTS = [
     id: 'g4',
     title: 'Livro de aventuras',
     description: 'Coleção pra dormir',
-    image_path:
-      'https://images.unsplash.com/photo-1503676260728-1c00da094a0b?w=400&q=80&auto=format',
+    image_path: svgGift('Livros', '#ddd6fe', '#7c3aed', '📚'),
     quota_value_cents: 2500,
     quota_total: 4,
     reserved: 0

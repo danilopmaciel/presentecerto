@@ -17,6 +17,7 @@ import {
 } from '@/components/GiftSuggestionsEditor';
 import { PixKeyEditor } from '@/components/PixKeyEditor';
 import { PlanSwitcher } from '@/components/PlanSwitcher';
+import { CustomThemeEditor } from '@/components/CustomThemeEditor';
 import { normalizePixKey } from '@/lib/pix-key';
 import { notifyAdmin, escapeHtml } from '@/lib/notify';
 
@@ -201,6 +202,62 @@ export default async function EventDetailPage({
     const supabase = await createClient();
     if (!THEMES.find((t) => t.id === themeId)) return;
     await supabase.from('events').update({ theme: themeId }).eq('id', eventId);
+    revalidatePath(`/app/eventos/${eventId}`);
+  }
+
+  async function saveCustomTheme(formData: FormData): Promise<{ error?: string } | void> {
+    'use server';
+    const supabase = await createClient();
+    const {
+      data: { user }
+    } = await supabase.auth.getUser();
+    if (!user) return { error: 'Não autenticado.' };
+
+    const { data: ev } = await supabase
+      .from('events')
+      .select('owner_id, plan_tier')
+      .eq('id', eventId)
+      .single();
+    if (!ev || ev.owner_id !== user.id) return { error: 'Sem permissão.' };
+    if (ev.plan_tier !== 'themed') {
+      return { error: 'Personalização disponível só no plano Temático.' };
+    }
+
+    const bgUrl = String(formData.get('bg_url') ?? '').trim();
+    const paletteRaw = String(formData.get('palette') ?? '');
+    if (!bgUrl) return { error: 'URL da imagem ausente.' };
+
+    let palette: { accent: string; bg: string; text: string };
+    try {
+      palette = JSON.parse(paletteRaw);
+    } catch {
+      return { error: 'Paleta inválida.' };
+    }
+
+    await supabase
+      .from('events')
+      .update({ custom_bg_path: bgUrl, custom_palette: palette })
+      .eq('id', eventId);
+    revalidatePath(`/app/eventos/${eventId}`);
+  }
+
+  async function clearCustomTheme() {
+    'use server';
+    const supabase = await createClient();
+    const {
+      data: { user }
+    } = await supabase.auth.getUser();
+    if (!user) return;
+    const { data: ev } = await supabase
+      .from('events')
+      .select('owner_id')
+      .eq('id', eventId)
+      .single();
+    if (!ev || ev.owner_id !== user.id) return;
+    await supabase
+      .from('events')
+      .update({ custom_bg_path: null, custom_palette: null })
+      .eq('id', eventId);
     revalidatePath(`/app/eventos/${eventId}`);
   }
 
@@ -564,9 +621,27 @@ export default async function EventDetailPage({
         <section className="rounded-lg border border-gray-200 bg-white p-6">
           <h2 className="font-semibold">Tema da página</h2>
           <p className="mt-1 text-sm text-gray-600">
-            Escolha como a página dos convidados vai parecer. O tema é aplicado na hora.
+            Escolha um dos 12 temas prontos abaixo, ou personalize com uma imagem sua.
           </p>
           <ThemePicker currentTheme={event.theme ?? 'default'} onSelect={setTheme} />
+
+          <div className="mt-8 border-t border-gray-100 pt-6">
+            <h3 className="text-sm font-semibold uppercase tracking-wide text-gray-700">
+              ✨ Personalização avançada
+            </h3>
+            <p className="mt-1 text-xs text-gray-500">
+              Carregue uma imagem (foto da decoração, arte do tema, capa) — a paleta da página é
+              extraída automaticamente da imagem. Sobrepõe o tema escolhido acima.
+            </p>
+            <div className="mt-4">
+              <CustomThemeEditor
+                currentBgUrl={event.custom_bg_path ?? null}
+                currentPalette={event.custom_palette ?? null}
+                onSave={saveCustomTheme}
+                onClear={clearCustomTheme}
+              />
+            </div>
+          </div>
         </section>
       )}
 
