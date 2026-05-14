@@ -2,9 +2,9 @@
 
 import { useEffect, useState } from 'react';
 import QRCode from 'qrcode';
-import { createClient } from '@/lib/supabase/client';
 import { formatBRL } from '@/lib/utils';
 import { CopyButton } from '@/components/CopyButton';
+import { submitRsvp } from './actions';
 
 type Gift = {
   id: string;
@@ -15,26 +15,36 @@ type Gift = {
   quota_total: number;
   reserved: number;
   available: number;
+  kind?: 'gift' | 'buffet';
 };
 
 export function RsvpAndGiftForm({
   eventId,
   gifts,
   cardClass,
-  accent
+  accent,
+  buffetTitle = 'Buffet',
+  buffetDescription = 'O anfitrião sugere uma contribuição por pessoa pra ajudar com o buffet. Você escolhe quantas vagas vai cobrir.'
 }: {
   eventId: string;
   gifts: Gift[];
   cardClass?: string;
   accent?: string;
+  buffetTitle?: string;
+  buffetDescription?: string;
 }) {
   const [rsvpOpen, setRsvpOpen] = useState(false);
   const [rsvpDone, setRsvpDone] = useState(false);
   const [rsvpId, setRsvpId] = useState<string | null>(null);
   const [guestName, setGuestName] = useState('');
   const [guestEmail, setGuestEmail] = useState('');
+  const [adults, setAdults] = useState(1);
+  const [children, setChildren] = useState(0);
 
   const baseCard = cardClass ?? 'bg-white';
+
+  const buffetItems = gifts.filter((g) => g.kind === 'buffet');
+  const giftItems = gifts.filter((g) => g.kind !== 'buffet');
 
   return (
     <div className="mt-10 space-y-8">
@@ -46,10 +56,12 @@ export function RsvpAndGiftForm({
             cardClass={baseCard}
             accent={accent}
             onCancel={() => setRsvpOpen(false)}
-            onDone={(id, name, email) => {
+            onDone={(id, name, email, ad, ch) => {
               setRsvpId(id);
               setGuestName(name);
               setGuestEmail(email);
+              setAdults(ad);
+              setChildren(ch);
               setRsvpDone(true);
               setRsvpOpen(false);
             }}
@@ -74,25 +86,62 @@ export function RsvpAndGiftForm({
         </div>
       )}
 
-      <section>
-        <h2 className="text-lg font-semibold">Lista de presentes</h2>
-        <p className="text-sm text-gray-600">
-          Cada presente é dividido em cotas. Você escolhe quantas quer presentear.
-        </p>
-        <div className="mt-4 space-y-3">
-          {gifts.map((g) => (
-            <GiftCard
-              key={g.id}
-              gift={g}
-              defaultBuyerName={guestName}
-              defaultBuyerEmail={guestEmail}
-              rsvpId={rsvpId}
-              cardClass={baseCard}
-              accent={accent}
-            />
-          ))}
-        </div>
-      </section>
+      {/* Buffet — lista separada quando o anfitrião usa esse modelo */}
+      {buffetItems.length > 0 && (
+        <section>
+          <div className="flex items-center gap-2">
+            <span
+              className="inline-flex h-7 w-7 items-center justify-center rounded-full text-base text-white"
+              style={{ background: accent ?? '#3b82f6' }}
+            >
+              🍽️
+            </span>
+            <h2 className="text-lg font-semibold">{buffetTitle}</h2>
+          </div>
+          <p className="mt-1 text-sm text-gray-600">
+            {buffetDescription}
+          </p>
+          <div className="mt-4 space-y-3">
+            {buffetItems.map((g) => (
+              <GiftCard
+                key={g.id}
+                gift={g}
+                defaultBuyerName={guestName}
+                defaultBuyerEmail={guestEmail}
+                rsvpId={rsvpId}
+                cardClass={baseCard}
+                accent={accent}
+                rsvpAdults={adults}
+                rsvpChildren={children}
+                buffetLabel={buffetTitle}
+              />
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* Presentes tradicionais */}
+      {giftItems.length > 0 && (
+        <section>
+          <h2 className="text-lg font-semibold">Lista de presentes</h2>
+          <p className="text-sm text-gray-600">
+            Cada presente é dividido em cotas. Você escolhe quantas quer presentear.
+          </p>
+          <div className="mt-4 space-y-3">
+            {giftItems.map((g) => (
+              <GiftCard
+                key={g.id}
+                gift={g}
+                defaultBuyerName={guestName}
+                defaultBuyerEmail={guestEmail}
+                rsvpId={rsvpId}
+                cardClass={baseCard}
+                accent={accent}
+              />
+            ))}
+          </div>
+        </section>
+      )}
     </div>
   );
 }
@@ -105,7 +154,7 @@ function RsvpForm({
   accent
 }: {
   eventId: string;
-  onDone: (id: string, name: string, email: string) => void;
+  onDone: (id: string, name: string, email: string, adults: number, children: number) => void;
   onCancel: () => void;
   cardClass?: string;
   accent?: string;
@@ -117,29 +166,23 @@ function RsvpForm({
     e.preventDefault();
     setSubmitting(true);
     setError(null);
-    const fd = new FormData(e.currentTarget);
-    const payload = {
-      event_id: eventId,
-      guest_name: String(fd.get('guest_name') ?? ''),
-      guest_email: String(fd.get('guest_email') ?? ''),
-      guest_phone: String(fd.get('guest_phone') ?? ''),
-      adults: Number(fd.get('adults') ?? 1),
-      children: Number(fd.get('children') ?? 0),
-      note: String(fd.get('note') ?? '')
-    };
 
-    const supabase = createClient();
-    const { data, error } = await supabase
-      .from('rsvps')
-      .insert(payload)
-      .select('id')
-      .single();
+    const fd = new FormData(e.currentTarget);
+    const res = await submitRsvp(fd);
+
     setSubmitting(false);
-    if (error) {
-      setError(error.message);
+    if (res.error) {
+      setError(res.error);
       return;
     }
-    onDone(data!.id, payload.guest_name, payload.guest_email);
+
+    onDone(
+      res.id!,
+      String(fd.get('guest_name')),
+      String(fd.get('guest_email')),
+      Number(fd.get('adults') ?? 1),
+      Number(fd.get('children') ?? 0)
+    );
   }
 
   return (
@@ -148,6 +191,14 @@ function RsvpForm({
       className={`space-y-3 rounded-lg p-6 shadow-sm ${cardClass}`}
       style={accent ? { borderTop: `4px solid ${accent}` } : undefined}
     >
+      <input
+        type="text"
+        name="website_url"
+        tabIndex={-1}
+        autoComplete="off"
+        style={{ display: 'none' }}
+      />
+
       <div className="flex items-center justify-between">
         <h2 className="text-lg font-semibold">Confirmar presença</h2>
         <button
@@ -218,11 +269,13 @@ function RsvpForm({
 function ProgressBar({
   reserved,
   total,
-  accent
+  accent,
+  unitLabel = 'cotas'
 }: {
   reserved: number;
   total: number;
   accent?: string;
+  unitLabel?: string;
 }) {
   const pct = total > 0 ? Math.min(100, Math.round((reserved / total) * 100)) : 0;
   const c = accent ?? '#10b981';
@@ -230,7 +283,7 @@ function ProgressBar({
     <div className="mt-2">
       <div className="flex items-center justify-between text-[11px] text-gray-600">
         <span>
-          {reserved} de {total} cotas
+          {reserved} de {total} {unitLabel}
         </span>
         <span className="font-medium">{pct}%</span>
       </div>
@@ -247,7 +300,7 @@ function ProgressBar({
   );
 }
 
-function SoldOutStamp() {
+function SoldOutStamp({ label = 'ESGOTADO' }: { label?: string }) {
   return (
     <div className="pointer-events-none absolute inset-0 flex items-center justify-center overflow-hidden">
       <div
@@ -258,10 +311,23 @@ function SoldOutStamp() {
           letterSpacing: '0.15em'
         }}
       >
-        ESGOTADO
+        {label}
       </div>
     </div>
   );
+}
+
+function defaultQuantityFor(gift: Gift, rsvpAdults: number, rsvpChildren: number): number {
+  if (gift.kind !== 'buffet') return 1;
+  const title = gift.title.toLowerCase();
+  const norm = title.normalize('NFD').replace(/[̀-ͯ]/g, '');
+  if (/crianc|kid|infant/.test(norm)) {
+    return Math.max(0, Math.min(gift.available, rsvpChildren));
+  }
+  if (/adult/.test(norm)) {
+    return Math.max(0, Math.min(gift.available, rsvpAdults));
+  }
+  return 1;
 }
 
 function GiftCard({
@@ -270,7 +336,10 @@ function GiftCard({
   defaultBuyerEmail,
   rsvpId,
   cardClass = 'bg-white',
-  accent
+  accent,
+  rsvpAdults = 0,
+  rsvpChildren = 0,
+  buffetLabel = 'Buffet'
 }: {
   gift: Gift;
   defaultBuyerName: string;
@@ -278,9 +347,27 @@ function GiftCard({
   rsvpId: string | null;
   cardClass?: string;
   accent?: string;
+  rsvpAdults?: number;
+  rsvpChildren?: number;
+  buffetLabel?: string;
 }) {
+  const isBuffet = gift.kind === 'buffet';
+  const unitLabelPlural = isBuffet ? 'pessoas' : 'cotas';
+  const unitLabelSingular = isBuffet ? 'pessoa' : 'cota';
+  const ctaLabel = isBuffet ? 'Contribuir' : 'Presentear';
+  const quantityLabel = isBuffet ? 'Quantas pessoas?' : 'Quantas cotas?';
+  const soldOutLabel = isBuffet ? 'LOTADO' : 'ESGOTADO';
+  const availableLabel = isBuffet
+    ? `${gift.available} ${gift.available === 1 ? 'vaga' : 'vagas'} disponíveis`
+    : `${gift.available} cotas disponíveis`;
+  const valueLabel = isBuffet
+    ? `${formatBRL(gift.quota_value_cents)} / ${unitLabelSingular}`
+    : `${formatBRL(gift.quota_value_cents)} / cota`;
+
+  const initialQty = defaultQuantityFor(gift, rsvpAdults, rsvpChildren);
+
   const [open, setOpen] = useState(false);
-  const [quotas, setQuotas] = useState(1);
+  const [quotas, setQuotas] = useState(initialQty > 0 ? initialQty : 1);
   const [submitting, setSubmitting] = useState(false);
   const [result, setResult] = useState<{ id: string; pix_payload: string; amount_cents: number } | null>(null);
   const [qrDataUrl, setQrDataUrl] = useState<string | null>(null);
@@ -288,6 +375,11 @@ function GiftCard({
   const [confirmed, setConfirmed] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const soldOut = gift.available <= 0;
+
+  useEffect(() => {
+    const next = defaultQuantityFor(gift, rsvpAdults, rsvpChildren);
+    if (next > 0) setQuotas(next);
+  }, [rsvpAdults, rsvpChildren, gift.id, gift.available]);
 
   useEffect(() => {
     if (!result?.pix_payload) {
@@ -318,7 +410,8 @@ function GiftCard({
       buyer_name: String(fd.get('buyer_name') ?? defaultBuyerName),
       buyer_email: String(fd.get('buyer_email') ?? defaultBuyerEmail),
       buyer_phone: String(fd.get('buyer_phone') ?? ''),
-      rsvp_id: rsvpId ?? undefined
+      rsvp_id: rsvpId ?? undefined,
+      website_url: String(fd.get('website_url') ?? '') // Honeypot
     };
     const res = await fetch('/api/purchases', {
       method: 'POST',
@@ -342,7 +435,7 @@ function GiftCard({
       style={accent ? { borderLeft: `4px solid ${accent}` } : undefined}
     >
       <div className="flex items-center gap-4">
-        {gift.image_path && (
+        {gift.image_path ? (
           <div className="relative shrink-0">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
@@ -353,13 +446,30 @@ function GiftCard({
               }`}
             />
           </div>
-        )}
+        ) : isBuffet ? (
+          <div
+            className={`flex h-20 w-20 shrink-0 items-center justify-center rounded-md text-3xl ${
+              soldOut ? 'opacity-60 grayscale' : ''
+            }`}
+            style={{ background: `${accent ?? '#3b82f6'}22` }}
+          >
+            🍽️
+          </div>
+        ) : null}
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
             <div className="font-medium">{gift.title}</div>
+            {isBuffet && (
+              <span
+                className="rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-white"
+                style={{ background: accent ?? '#3b82f6' }}
+              >
+                {buffetLabel}
+              </span>
+            )}
             {soldOut && (
               <span className="rounded-full bg-red-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-red-700">
-                Esgotado
+                {soldOutLabel}
               </span>
             )}
           </div>
@@ -367,14 +477,17 @@ function GiftCard({
             <div className="text-sm text-gray-600">{gift.description}</div>
           )}
           <div className="mt-1 text-sm text-gray-500">
-            {formatBRL(gift.quota_value_cents)} / cota
-            {!soldOut && ` · ${gift.available} cotas disponíveis`}
+            {valueLabel}
+            {!isBuffet && !soldOut && ` · ${availableLabel}`}
           </div>
-          <ProgressBar
-            reserved={gift.reserved}
-            total={gift.quota_total}
-            accent={accent}
-          />
+          {!isBuffet && (
+            <ProgressBar
+              reserved={gift.reserved}
+              total={gift.quota_total}
+              accent={accent}
+              unitLabel={unitLabelPlural}
+            />
+          )}
         </div>
         {!soldOut && (
           <button
@@ -382,12 +495,12 @@ function GiftCard({
             className="shrink-0 rounded-md px-3 py-1.5 text-sm text-white shadow-sm hover:opacity-90"
             style={{ background: accent ?? '#3b82f6' }}
           >
-            Presentear
+            {ctaLabel}
           </button>
         )}
       </div>
 
-      {soldOut && <SoldOutStamp />}
+      {soldOut && <SoldOutStamp label={soldOutLabel} />}
 
       {open && !result && !soldOut && (
         <form
@@ -395,7 +508,7 @@ function GiftCard({
           className="mt-4 space-y-3 border-t border-gray-100 pt-4"
         >
           <label className="block text-sm">
-            Quantas cotas?
+            {quantityLabel}
             <input
               type="number"
               min={1}
@@ -408,7 +521,22 @@ function GiftCard({
               }
               className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2"
             />
+            {isBuffet && (rsvpAdults > 0 || rsvpChildren > 0) && (
+              <span className="mt-1 block text-[11px] text-gray-500">
+                Sugerido com base na sua confirmação ({rsvpAdults} adulto(s),{' '}
+                {rsvpChildren} criança(s))
+              </span>
+            )}
           </label>
+
+          <input
+            type="text"
+            name="website_url"
+            tabIndex={-1}
+            autoComplete="off"
+            style={{ display: 'none' }}
+          />
+
           <input
             name="buyer_name"
             required
@@ -484,8 +612,8 @@ function GiftCard({
           </div>
 
           <div className="rounded-md border border-dashed border-gray-300 bg-white p-3 text-xs text-gray-600">
-            Depois de pagar, avise o anfitrião clicando em <strong>Já paguei</strong>. A cota fica
-            reservada e o anfitrião confirma o recebimento.
+            Depois de pagar, avise o anfitrião clicando em <strong>Já paguei</strong>. A{' '}
+            {unitLabelSingular} fica reservada e o anfitrião confirma o recebimento.
           </div>
 
           {!confirmed ? (
@@ -503,7 +631,7 @@ function GiftCard({
                     method: 'POST'
                   });
                 } catch {
-                  // falha silenciosa — anfitrião pode acompanhar manualmente
+                  // falha silenciosa
                 }
                 setConfirming(false);
                 setConfirmed(true);

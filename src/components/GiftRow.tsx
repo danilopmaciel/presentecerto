@@ -12,6 +12,7 @@ export type GiftRowData = {
   image_path: string | null;
   quota_value_cents: number;
   quota_total: number;
+  kind?: 'gift' | 'buffet';
 };
 
 type Update = (formData: FormData) => Promise<void>;
@@ -37,7 +38,9 @@ export function GiftRow({
   const [editing, setEditing] = useState(false);
   const [confirmDel, setConfirmDel] = useState(false);
   const [imageUrl, setImageUrl] = useState(gift.image_path ?? '');
+  const [kind, setKind] = useState<'gift' | 'buffet'>(gift.kind ?? 'gift');
   const [error, setError] = useState<string | null>(null);
+  const isBuffet = kind === 'buffet';
 
   function submitEdit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -45,6 +48,7 @@ export function GiftRow({
     const fd = new FormData(e.currentTarget);
     fd.set('image_path', imageUrl);
     fd.set('gift_id', gift.id);
+    fd.set('kind', kind);
     startTransition(async () => {
       await onUpdate(fd);
       setEditing(false);
@@ -75,12 +79,42 @@ export function GiftRow({
         onSubmit={submitEdit}
         className="space-y-3 rounded-md border-2 border-brand-300 bg-brand-50/40 p-4"
       >
-        <div className="text-sm font-medium text-brand-900">Editando presente</div>
+        <div className="text-sm font-medium text-brand-900">
+          Editando {isBuffet ? 'item de buffet' : 'presente'}
+        </div>
+
+        <div className="grid grid-cols-2 gap-2">
+          <button
+            type="button"
+            onClick={() => setKind('gift')}
+            className={`flex items-center gap-2 rounded-md border-2 px-3 py-2 text-left text-xs ${
+              !isBuffet
+                ? 'border-brand-500 bg-brand-50 text-brand-800'
+                : 'border-gray-200 bg-white text-gray-600 hover:border-gray-300'
+            }`}
+          >
+            <span className="text-base">🎁</span>
+            <span className="font-medium">Presente</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setKind('buffet')}
+            className={`flex items-center gap-2 rounded-md border-2 px-3 py-2 text-left text-xs ${
+              isBuffet
+                ? 'border-brand-500 bg-brand-50 text-brand-800'
+                : 'border-gray-200 bg-white text-gray-600 hover:border-gray-300'
+            }`}
+          >
+            <span className="text-base">🍽️</span>
+            <span className="font-medium">Buffet</span>
+          </button>
+        </div>
+
         <input
           name="title"
           required
           defaultValue={gift.title}
-          placeholder="Título"
+          placeholder={isBuffet ? 'Ex.: Buffet adulto' : 'Título do presente'}
           className="w-full rounded-md border border-gray-300 bg-white px-3 py-2"
         />
         <input
@@ -95,16 +129,16 @@ export function GiftRow({
             value={imageUrl}
             onChange={setImageUrl}
             scope="gift"
-            enableUrlFetch
+            enableUrlFetch={!isBuffet}
             enableAi={enableAi}
             eventId={eventId}
-            placeholder="URL da foto ou link do produto"
+            placeholder={isBuffet ? 'URL da foto (opcional)' : 'URL da foto ou link do produto'}
           />
         </div>
 
         <div className="grid grid-cols-2 gap-3">
           <label className="block text-sm">
-            Valor da cota (R$)
+            {isBuffet ? 'Valor por pessoa (R$)' : 'Valor da cota (R$)'}
             <input
               name="quota_value"
               type="number"
@@ -115,22 +149,26 @@ export function GiftRow({
               className="mt-1 w-full rounded-md border border-gray-300 bg-white px-3 py-2"
             />
           </label>
-          <label className="block text-sm">
-            Nº de cotas
-            <input
-              name="quota_total"
-              type="number"
-              min={Math.max(1, sold)}
-              required
-              defaultValue={gift.quota_total}
-              className="mt-1 w-full rounded-md border border-gray-300 bg-white px-3 py-2"
-            />
-            {hasSales && (
-              <span className="mt-1 block text-[11px] text-gray-500">
-                Mínimo {sold} (já vendidas).
-              </span>
-            )}
-          </label>
+          {isBuffet ? (
+            <input type="hidden" name="quota_total" value={gift.quota_total || 999999} />
+          ) : (
+            <label className="block text-sm">
+              Nº de cotas
+              <input
+                name="quota_total"
+                type="number"
+                min={Math.max(1, sold)}
+                required
+                defaultValue={gift.quota_total}
+                className="mt-1 w-full rounded-md border border-gray-300 bg-white px-3 py-2"
+              />
+              {hasSales && (
+                <span className="mt-1 block text-[11px] text-gray-500">
+                  Mínimo {sold} (já vendidas).
+                </span>
+              )}
+            </label>
+          )}
         </div>
 
         {error && <div className="text-sm text-red-600">{error}</div>}
@@ -171,12 +209,21 @@ export function GiftRow({
           />
         )}
         <div className="min-w-0 flex-1">
-          <div className="font-medium">{gift.title}</div>
+          <div className="flex items-center gap-2">
+            <div className="font-medium">{gift.title}</div>
+            {gift.kind === 'buffet' && (
+              <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-800">
+                🍽️ Buffet
+              </span>
+            )}
+          </div>
           {gift.description && (
             <div className="text-xs text-gray-500">{gift.description}</div>
           )}
           <div className="text-sm text-gray-500">
-            {formatBRL(gift.quota_value_cents)} / cota — {sold} de {gift.quota_total} vendidas
+            {gift.kind === 'buffet'
+              ? `${formatBRL(gift.quota_value_cents)} / pessoa`
+              : `${formatBRL(gift.quota_value_cents)} / cota — ${sold} de ${gift.quota_total} vendidas`}
           </div>
         </div>
         <div className="flex shrink-0 gap-2">
