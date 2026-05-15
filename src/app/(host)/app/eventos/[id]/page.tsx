@@ -658,13 +658,26 @@ export default async function EventDetailPage({
       )}
 
       {/* Configurações de Buffet */}
-      <section className="rounded-lg border border-gray-200 bg-white p-6">
-        <h2 className="font-semibold">Configurações de Buffet / Contribuição</h2>
-        <p className="mt-1 text-sm text-gray-600">
-          Habilite esta opção se quiser uma seção separada para contribuições por pessoa
-          (ex: buffet adulto/infantil, convite individual).
-        </p>
-        <form action={updateBuffetSettings} className="mt-4 space-y-4">
+        <section className="rounded-xl border border-gray-200 bg-gray-50 p-6 shadow-sm">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-lg font-semibold text-gray-900">Configurações de Buffet / Contribuição</h2>
+              <p className="text-sm text-gray-500">
+                Habilite uma seção separada para arrecadar valores por pessoa (ex: buffet, convites, kits).
+              </p>
+            </div>
+            <div className={`rounded-full px-3 py-1 text-xs font-bold uppercase ${event.enable_buffet ? 'bg-green-100 text-green-700' : 'bg-gray-200 text-gray-600'}`}>
+              {event.enable_buffet ? 'Ativado' : 'Desativado'}
+            </div>
+          </div>
+
+          {!event.enable_buffet && buffetItems.length > 0 && (
+            <div className="mt-4 rounded-md bg-yellow-50 p-3 text-sm text-yellow-800 border border-yellow-200">
+              💡 <strong>Atenção:</strong> Você tem {buffetItems.length} item(ns) de buffet, mas a seção está <strong>desativada</strong>. Os convidados não conseguirão vê-los até que você ative abaixo.
+            </div>
+          )}
+
+          <form action={updateBuffetSettings} className="mt-6 space-y-4">
           <label className="flex items-center gap-3">
             <input
               type="checkbox"

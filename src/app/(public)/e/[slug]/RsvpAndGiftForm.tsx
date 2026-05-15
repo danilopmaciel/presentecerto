@@ -81,14 +81,17 @@ export function RsvpAndGiftForm({
           </button>
         )
       ) : (
-        <div className="rounded-md border border-green-200 bg-green-50 p-4 text-sm text-green-800">
-          Presença confirmada, {guestName}! Obrigado por vir. ✨
+        <div className="rounded-md border border-green-200 bg-green-50 p-4 text-sm text-green-800 shadow-sm">
+          <div className="font-semibold text-green-900">✨ Presença confirmada!</div>
+          <p className="mt-1">
+            Obrigado por confirmar, {guestName}. {buffetItems.length > 0 && "Se puder, aproveite para garantir seu convite/contribuição abaixo."}
+          </p>
         </div>
       )}
 
       {/* Buffet — lista separada quando o anfitrião usa esse modelo */}
       {buffetItems.length > 0 && (
-        <section>
+        <section className={`rounded-xl border-2 p-5 ${rsvpDone ? 'border-brand-200 bg-brand-50/30 shadow-md' : 'border-transparent'}`}>
           <div className="flex items-center gap-2">
             <span
               className="inline-flex h-7 w-7 items-center justify-center rounded-full text-base text-white"
@@ -191,6 +194,7 @@ function RsvpForm({
       className={`space-y-3 rounded-lg p-6 shadow-sm ${cardClass}`}
       style={accent ? { borderTop: `4px solid ${accent}` } : undefined}
     >
+      <input type="hidden" name="event_id" value={eventId} />
       <input
         type="text"
         name="website_url"
@@ -559,6 +563,11 @@ function GiftCard({
           <div className="text-sm text-gray-700">
             Total: <strong>{formatBRL(gift.quota_value_cents * quotas)}</strong>
           </div>
+          {isBuffet && !result && (
+            <div className="rounded bg-brand-100 p-2 text-[11px] text-brand-800">
+              💡 Você receberá o código Pix para pagamento assim que clicar no botão abaixo.
+            </div>
+          )}
           <button
             disabled={submitting}
             className="w-full rounded-md py-2 text-white shadow-sm hover:opacity-90 disabled:opacity-60"
