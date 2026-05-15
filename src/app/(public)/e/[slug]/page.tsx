@@ -1,6 +1,6 @@
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
-import { createClient } from '@/lib/supabase/server';
+import { createClient, createAdminClient } from '@/lib/supabase/server';
 import { getTheme } from '@/lib/themes';
 import { RsvpAndGiftForm } from './RsvpAndGiftForm';
 import { GiftSuggestionsDisplay } from '@/components/GiftSuggestionsDisplay';
@@ -19,9 +19,17 @@ export default async function PublicEventPage({
     data: { user }
   } = await supabase.auth.getUser();
 
-  const { data: event } = await supabase
+  // Server-side com admin client + select EXPLÍCITO de campos seguros.
+  // Bypassa RLS pra ler colunas necessárias sem expor plan_pix_payload, plan_pix_txid,
+  // plan_paid_at, ai_generations_used, etc, que ficariam acessíveis se um curioso
+  // fosse direto na anon API (RLS é por linha, não por coluna).
+  const admin = createAdminClient();
+
+  const { data: event } = await admin
     .from('events')
-    .select('id, slug, owner_id, title, description, starts_at, location_text, location_maps_url, theme, status, plan_tier, gift_suggestions, custom_bg_path, custom_palette')
+    .select(
+      'id, slug, owner_id, title, description, starts_at, location_text, location_maps_url, theme, status, plan_tier, gift_suggestions, custom_bg_path, custom_palette'
+    )
     .eq('slug', slug)
     .single();
 
@@ -31,14 +39,15 @@ export default async function PublicEventPage({
   const isOwnerPreview = !!user && event.owner_id === user.id;
   if (event.status !== 'published' && !isOwnerPreview) notFound();
 
-  const { data: gifts } = await supabase
+  const { data: gifts } = await admin
     .from('gift_items')
-    .select('id, title, description, image_path, quota_value_cents, quota_total')
+    .select('id, title, description, image_path, quota_value_cents, quota_total, kind')
     .eq('event_id', event.id)
     .order('sort_order', { ascending: true });
 
-  // cotas já reservadas (pending + paid_claimed + paid)
-  const { data: reservedRows } = await supabase
+  // Cotas reservadas — admin client ignora RLS, então convidados anônimos veem
+  // a barra de progresso real (não zero, como acontecia com a anon key).
+  const { data: reservedRows } = await admin
     .from('gift_purchases')
     .select('gift_item_id, quotas, status')
     .eq('event_id', event.id);
@@ -56,9 +65,11 @@ export default async function PublicEventPage({
     available: g.quota_total - (reservedMap.get(g.id) ?? 0)
   }));
 
-  // Lista de colaboradores: presentes confirmados (status=paid)
+  // Colaboradores — só selecionamos buyer_name (NÃO email/phone). Esse é o filtro
+  // de privacidade: mesmo via admin client, esses campos sensíveis nunca chegam
+  // ao componente cliente.
   const giftTitleById = new Map((gifts ?? []).map((g) => [g.id, g.title]));
-  const { data: paidPurchases } = await supabase
+  const { data: paidPurchases } = await admin
     .from('gift_purchases')
     .select('buyer_name, gift_item_id, paid_at')
     .eq('event_id', event.id)

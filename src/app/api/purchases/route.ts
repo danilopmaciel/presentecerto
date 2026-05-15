@@ -23,6 +23,12 @@ export async function POST(request: Request) {
       { status: 400 }
     );
   }
+
+  // Honeypot check
+  if ((body as any).website_url) {
+    return NextResponse.json({ error: 'Bot detected' }, { status: 400 });
+  }
+
   const input = parsed.data;
 
   const supabase = await createClient();

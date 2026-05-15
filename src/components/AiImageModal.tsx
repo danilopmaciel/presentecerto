@@ -31,7 +31,7 @@ type Props = {
 export function AiImageModal({ open, onClose, onPick, scope, eventId }: Props) {
   const [prompt, setPrompt] = useState('');
   const [generating, setGenerating] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<{ msg: string; helpUrl?: string } | null>(null);
   const [result, setResult] = useState<{
     url: string;
     used: number;
@@ -47,11 +47,11 @@ export function AiImageModal({ open, onClose, onPick, scope, eventId }: Props) {
     setError(null);
     setResult(null);
     if (!prompt.trim()) {
-      setError('Descreva o que você quer.');
+      setError({ msg: 'Descreva o que você quer.' });
       return;
     }
     if (!eventId) {
-      setError('Salve o evento primeiro pra usar a IA.');
+      setError({ msg: 'Salve o evento primeiro pra usar a IA.' });
       return;
     }
     setGenerating(true);
@@ -63,7 +63,10 @@ export function AiImageModal({ open, onClose, onPick, scope, eventId }: Props) {
       });
       const json = await res.json();
       if (!res.ok || !json.ok) {
-        setError(json.error ?? 'Falha na geração.');
+        setError({
+          msg: json.error ?? 'Falha na geração.',
+          helpUrl: json.help_url
+        });
         return;
       }
       setResult({
@@ -73,7 +76,7 @@ export function AiImageModal({ open, onClose, onPick, scope, eventId }: Props) {
         remaining: json.remaining
       });
     } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : 'Erro inesperado.');
+      setError({ msg: e instanceof Error ? e.message : 'Erro inesperado.' });
     } finally {
       setGenerating(false);
     }
@@ -158,8 +161,18 @@ export function AiImageModal({ open, onClose, onPick, scope, eventId }: Props) {
             </div>
 
             {error && (
-              <div className="mt-3 rounded-md border border-red-200 bg-red-50 p-2 text-xs text-red-700">
-                {error}
+              <div className="mt-3 space-y-2 rounded-md border border-red-200 bg-red-50 p-3 text-xs text-red-800">
+                <div>{error.msg}</div>
+                {error.helpUrl && (
+                  <a
+                    href={error.helpUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-block rounded-md bg-red-600 px-3 py-1 font-medium text-white hover:bg-red-700"
+                  >
+                    Abrir Google AI Studio →
+                  </a>
+                )}
               </div>
             )}
 

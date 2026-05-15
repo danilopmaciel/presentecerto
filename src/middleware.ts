@@ -7,7 +7,12 @@ export async function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
-    // tudo, exceto assets estáticos
-    '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)'
+    // Tudo, exceto:
+    // - assets estáticos
+    // - /auth/callback: precisa que a rota controle os cookies do exchange PKCE
+    //   diretamente. Se o middleware rodar antes e chamar getUser(), pode
+    //   atrapalhar o code_verifier que ainda não foi trocado.
+    // - /api/*: rotas de API gerenciam auth próprio
+    '/((?!auth/callback|api/|_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)'
   ]
 };

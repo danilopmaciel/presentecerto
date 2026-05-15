@@ -12,13 +12,15 @@ export function CustomThemeEditor({
   currentPalette,
   onSave,
   onClear,
-  eventId
+  eventId,
+  enableAi = false
 }: {
   currentBgUrl: string | null;
   currentPalette: Palette | null;
   onSave: Save;
   onClear: () => Promise<void>;
   eventId?: string;
+  enableAi?: boolean;
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
@@ -121,7 +123,7 @@ export function CustomThemeEditor({
             value={bgUrl}
             onChange={setBgUrl}
             scope="bg"
-            enableAi
+            enableAi={enableAi}
             eventId={eventId}
             placeholder="Cole a URL ou faça upload"
           />

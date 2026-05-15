@@ -165,9 +165,31 @@ export async function POST(request: Request) {
       // Outros erros (429, 500, 401, 403) — não adianta tentar outros modelos
       // eslint-disable-next-line no-console
       console.error('[generate-image] gemini error', model, res.status, txt);
+
+      // Tenta extrair a mensagem específica do JSON de erro do Google
+      let detail = '';
+      try {
+        const errJson = JSON.parse(txt) as { error?: { message?: string; status?: string } };
+        detail = errJson.error?.message ?? '';
+      } catch {
+        detail = txt.slice(0, 300);
+      }
+
       if (res.status === 429) {
+        // Distingue free-tier vs rate limit real
+        const isFreeTier = /free.?tier|billing|quota.*exceeded|requires.*billing/i.test(detail);
         return NextResponse.json(
-          { error: 'API do Gemini atingiu limite. Tente em alguns minutos.' },
+          {
+            error: isFreeTier
+              ? 'Geração de imagem do Gemini não é coberta pelo free tier. ' +
+                'Ative o billing no projeto Google Cloud associado à sua chave de API. ' +
+                'Custo estimado: ~US$ 0,03 por imagem.'
+              : 'API do Gemini atingiu limite por minuto. Tente novamente em alguns segundos.',
+            detail,
+            help_url: isFreeTier
+              ? 'https://aistudio.google.com/app/apikey'
+              : undefined
+          },
           { status: 429 }
         );
       }
@@ -175,13 +197,14 @@ export async function POST(request: Request) {
         return NextResponse.json(
           {
             error:
-              'Chave de API inválida ou sem permissão. Verifique se ela tem acesso ao Generative Language API.'
+              'Chave de API inválida ou sem permissão. Verifique se ela tem acesso ao Generative Language API.',
+            detail
           },
           { status: res.status }
         );
       }
       return NextResponse.json(
-        { error: `Falha na geração (${res.status}). Tente outro prompt.` },
+        { error: `Falha na geração (${res.status}). ${detail || 'Tente outro prompt.'}` },
         { status: 502 }
       );
     } catch (e: unknown) {

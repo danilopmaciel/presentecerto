@@ -18,7 +18,8 @@ export function ThemePicker({
   customPalette,
   onSaveCustom,
   onClearCustom,
-  eventId
+  eventId,
+  aiEnabled = false
 }: {
   currentTheme: string;
   onSelect: (themeId: string) => Promise<void>;
@@ -29,6 +30,8 @@ export function ThemePicker({
   onClearCustom?: ClearCustom;
   /** Necessário pro botão IA dentro do editor de custom funcionar */
   eventId?: string;
+  /** Mostra o botão "✨ Gerar com IA" no editor de custom */
+  aiEnabled?: boolean;
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
@@ -203,6 +206,7 @@ export function ThemePicker({
             onSave={onSaveCustom}
             onClear={onClearCustom}
             eventId={eventId}
+            enableAi={aiEnabled}
           />
         </div>
       )}

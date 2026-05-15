@@ -24,8 +24,16 @@ export default function LoginPage() {
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const kind = params.get('error');
+    const reason = params.get('reason');
     if (kind) {
-      setAuthError({ kind, reason: params.get('reason') });
+      setAuthError({ kind, reason });
+    }
+    // Se o callback marcou retry=1 (limpou cookies PKCE), removo o param da URL
+    // pra usuário poder tentar de novo sem o estado "sujo" na URL
+    if (params.get('retry') === '1') {
+      const url = new URL(window.location.href);
+      url.searchParams.delete('retry');
+      window.history.replaceState({}, '', url.toString());
     }
   }, []);
 
@@ -75,18 +83,30 @@ export default function LoginPage() {
       {authError && (
         <div className="mt-4 space-y-2 rounded-md border border-red-200 bg-red-50 p-3 text-xs text-red-800">
           <div className="font-semibold">Login falhou</div>
-          <div>{ERROR_LABELS[authError.kind] ?? 'Algo deu errado.'}</div>
-          {authError.reason && (
+          <div>
+            {authError.reason === 'pkce' ? (
+              <>
+                Os cookies de autenticação ficaram confusos. <strong>Já limpei
+                automaticamente</strong> — clique em "Entrar com Google" abaixo e o login deve
+                funcionar agora.
+              </>
+            ) : (
+              ERROR_LABELS[authError.kind] ?? 'Algo deu errado.'
+            )}
+          </div>
+          {authError.reason && authError.reason !== 'pkce' && (
             <div className="break-all rounded border border-red-200 bg-white p-2 font-mono text-[11px] text-red-700">
               {authError.reason}
             </div>
           )}
-          <ul className="list-disc pl-5 text-[11px] text-red-700">
-            <li>Não use modo anônimo/aba privada (bloqueia cookies)</li>
-            <li>Termine o login no mesmo navegador onde clicou em "Entrar com Google"</li>
-            <li>Desbloqueie cookies de terceiros pra google.com e supabase.co</li>
-            <li>Não recarregue a página depois que o Google te trouxer de volta</li>
-          </ul>
+          {authError.reason !== 'pkce' && (
+            <ul className="list-disc pl-5 text-[11px] text-red-700">
+              <li>Não use modo anônimo/aba privada (bloqueia cookies)</li>
+              <li>Termine o login no mesmo navegador onde clicou em "Entrar com Google"</li>
+              <li>Desbloqueie cookies de terceiros pra google.com e supabase.co</li>
+              <li>Não recarregue a página depois que o Google te trouxer de volta</li>
+            </ul>
+          )}
         </div>
       )}
 

@@ -88,6 +88,8 @@ export default async function EventDetailPage({
     const image_path = String(formData.get('image_path') ?? '').trim();
     const quota_value_cents = Math.round(Number(formData.get('quota_value') ?? 0) * 100);
     const quota_total = Number(formData.get('quota_total') ?? 1);
+    const rawKind = String(formData.get('kind') ?? 'gift');
+    const kind = rawKind === 'buffet' ? 'buffet' : 'gift';
 
     if (!title || quota_value_cents <= 0 || quota_total <= 0) return;
 
@@ -97,7 +99,8 @@ export default async function EventDetailPage({
       description: description || null,
       image_path: image_path || null,
       quota_value_cents,
-      quota_total
+      quota_total,
+      kind
     });
     revalidatePath(`/app/eventos/${eventId}`);
   }
@@ -133,6 +136,8 @@ export default async function EventDetailPage({
     const image_path = String(formData.get('image_path') ?? '').trim();
     const quota_value_cents = Math.round(Number(formData.get('quota_value') ?? 0) * 100);
     const quota_total = Number(formData.get('quota_total') ?? 1);
+    const rawKind = String(formData.get('kind') ?? 'gift');
+    const kind = rawKind === 'buffet' ? 'buffet' : 'gift';
     if (!title || quota_value_cents <= 0 || quota_total <= 0) return;
 
     // Não permite reduzir o total abaixo do que já foi vendido
@@ -151,7 +156,8 @@ export default async function EventDetailPage({
         description: description || null,
         image_path: image_path || null,
         quota_value_cents,
-        quota_total: safeTotal
+        quota_total: safeTotal,
+        kind
       })
       .eq('id', giftId);
     revalidatePath(`/app/eventos/${eventId}`);
@@ -566,6 +572,7 @@ export default async function EventDetailPage({
   const publicUrl = `${site}/e/${event.slug}`;
   const isPublished = event.status === 'published';
   const testMode = process.env.NEXT_PUBLIC_TEST_MODE === 'true';
+  const aiEnabled = process.env.NEXT_PUBLIC_AI_GENERATION_ENABLED === 'true';
   const planQrDataUrl = event.plan_pix_payload
     ? await QRCode.toDataURL(event.plan_pix_payload, { margin: 1, width: 240 })
     : null;
@@ -631,6 +638,7 @@ export default async function EventDetailPage({
             onSaveCustom={saveCustomTheme}
             onClearCustom={clearCustomTheme}
             eventId={eventId}
+            aiEnabled={aiEnabled}
           />
         </section>
       )}
@@ -751,13 +759,14 @@ export default async function EventDetailPage({
                   description: g.description,
                   image_path: g.image_path,
                   quota_value_cents: g.quota_value_cents,
-                  quota_total: g.quota_total
+                  quota_total: g.quota_total,
+                  kind: (g.kind === 'buffet' ? 'buffet' : 'gift') as 'gift' | 'buffet'
                 }}
                 sold={sold}
                 onUpdate={updateGift}
                 onDelete={deleteGift}
                 eventId={eventId}
-                enableAi={event.plan_tier === 'themed'}
+                enableAi={aiEnabled && event.plan_tier === 'themed'}
               />
             );
           })}
@@ -767,7 +776,7 @@ export default async function EventDetailPage({
           <GiftAddForm
             onAdd={addGift}
             eventId={eventId}
-            enableAi={event.plan_tier === 'themed'}
+            enableAi={aiEnabled && event.plan_tier === 'themed'}
           />
         </div>
       </section>
