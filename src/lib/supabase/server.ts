@@ -22,7 +22,7 @@ export async function createClient() {
           try {
             cookieStore.set({ name, value, ...options });
           } catch {
-            // Server Components não podem setar cookies — tratado pelo middleware.
+            // Server Components não podem setar cookies
           }
         },
         remove(name: string, options: CookieOptions) {

@@ -24,7 +24,9 @@ export async function submitRsvp(formData: FormData) {
 
   const parsed = rsvpSchema.safeParse(rawData);
   if (!parsed.success) {
-    return { error: 'Dados inválidos', issues: parsed.error.issues };
+    console.error('[RSVP Validation Error]', parsed.error.format());
+    const firstError = parsed.error.issues[0]?.message || 'Dados inválidos';
+    return { error: `Dados inválidos: ${firstError}`, issues: parsed.error.issues };
   }
 
   const supabase = await createClient();
