@@ -93,9 +93,18 @@ export default async function PublicEventPage({
   // Tema personalizado (plano temático com bg image enviado)
   const customBgUrl: string | null =
     event.plan_tier === 'themed' && event.custom_bg_path ? event.custom_bg_path : null;
+  const rawPalette = event.custom_palette;
   const customPalette =
-    customBgUrl && event.custom_palette
-      ? (event.custom_palette as { accent: string; bg: string; text: string })
+    customBgUrl &&
+    rawPalette !== null &&
+    typeof rawPalette === 'object' &&
+    'accent' in rawPalette &&
+    'bg' in rawPalette &&
+    'text' in rawPalette &&
+    typeof (rawPalette as Record<string, unknown>).accent === 'string' &&
+    typeof (rawPalette as Record<string, unknown>).bg === 'string' &&
+    typeof (rawPalette as Record<string, unknown>).text === 'string'
+      ? (rawPalette as { accent: string; bg: string; text: string })
       : null;
   const themeAccent = customPalette?.accent ?? theme.accent;
   const themeTextColor = customPalette?.text ?? null;

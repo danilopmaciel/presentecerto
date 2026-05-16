@@ -12,6 +12,25 @@ export type PixKeyKind = 'phone' | 'email' | 'evp' | 'cpf' | 'cnpj' | 'unknown';
 const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
+/** Valida CPF pelo dígito verificador (módulo 11). Recebe 11 dígitos puros. */
+function isValidCpfDigits(digits: string): boolean {
+  if (digits.length !== 11) return false;
+  // CPFs com todos os dígitos iguais são inválidos (ex: 111.111.111-11)
+  if (/^(\d)\1{10}$/.test(digits)) return false;
+
+  let sum = 0;
+  for (let i = 0; i < 9; i++) sum += parseInt(digits[i]) * (10 - i);
+  let r = (sum * 10) % 11;
+  if (r >= 10) r = 0;
+  if (r !== parseInt(digits[9])) return false;
+
+  sum = 0;
+  for (let i = 0; i < 10; i++) sum += parseInt(digits[i]) * (11 - i);
+  r = (sum * 10) % 11;
+  if (r >= 10) r = 0;
+  return r === parseInt(digits[10]);
+}
+
 export function detectPixKeyKind(input: string): PixKeyKind {
   const raw = input.trim();
   if (!raw) return 'unknown';
@@ -28,10 +47,10 @@ export function detectPixKeyKind(input: string): PixKeyKind {
   }
   if (raw.includes('.') && digits.length === 11) return 'cpf';
 
-  // 11 dígitos puros: heurística — celular brasileiro tem 9 logo após o DDD
+  // 11 dígitos puros: usa checksum CPF como desempate confiável.
+  // Se passar no módulo 11, é CPF; caso contrário, trata como celular.
   if (digits.length === 11) {
-    if (digits[2] === '9') return 'phone';
-    return 'cpf';
+    return isValidCpfDigits(digits) ? 'cpf' : 'phone';
   }
   return 'unknown';
 }
@@ -63,13 +82,14 @@ export function normalizePixKey(input: string): string {
   }
 
   if (digits.length === 11) {
-    // CPF mascarado (com pontos)
+    // CPF mascarado (com pontos) → retorna só dígitos
     if (raw.includes('.')) return digits;
-    // Telefone mascarado (parênteses, traço, espaço)
+    // Telefone mascarado (parênteses, traço, espaço) → E.164
     if (/[()\s-]/.test(raw)) return '+55' + digits;
-    // Sem formatação: heurística — celular começa com 9 depois do DDD
-    if (digits[2] === '9') return '+55' + digits;
-    return digits; // CPF
+    // 11 dígitos puros sem formatação: usa checksum CPF como desempate.
+    // Isso evita confundir um CPF cujo 3º dígito é '9' com celular.
+    if (isValidCpfDigits(digits)) return digits; // CPF
+    return '+55' + digits; // celular
   }
 
   // Não consegui identificar — devolve como veio

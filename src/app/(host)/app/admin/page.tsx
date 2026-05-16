@@ -305,7 +305,7 @@ export default async function AdminPage() {
                       <span className="font-mono">{c.refund_pix_key}</span>
                     </div>
                     {c.refund_note && (
-                      <div className="mt-1 italic text-xs text-gray-700">"{c.refund_note}"</div>
+                      <div className="mt-1 italic text-xs text-gray-700">{'"'}{c.refund_note}{'"'}</div>
                     )}
                     <div className="mt-0.5 text-[11px] text-gray-500">
                       Pedido em{' '}
@@ -340,7 +340,7 @@ export default async function AdminPage() {
         <h2 className="text-lg font-semibold">Aguardando confirmação</h2>
         {!pending || pending.length === 0 ? (
           <p className="mt-2 rounded-md border border-dashed border-gray-300 p-6 text-center text-sm text-gray-500">
-            Nada por aqui. Quando alguém clicar em "Já paguei" no painel do evento, vai aparecer
+            Nada por aqui. Quando alguém clicar em {'"'}Já paguei{'"'} no painel do evento, vai aparecer
             aqui.
           </p>
         ) : (
@@ -365,7 +365,7 @@ export default async function AdminPage() {
       <section className="rounded-md border border-gray-200 bg-gray-50 p-4 text-xs text-gray-600">
         <strong>Notificações:</strong> seta as ENVs <code>TELEGRAM_BOT_TOKEN</code> e{' '}
         <code>TELEGRAM_CHAT_ID</code> na Vercel pra receber um aviso no Telegram toda vez que
-        alguém clicar em "Já paguei". Sem essas envs, o app continua funcionando — só fica em
+        alguém clicar em {'"'}Já paguei{'"'}. Sem essas envs, o app continua funcionando — só fica em
         silêncio.
       </section>
     </div>

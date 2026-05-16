@@ -77,8 +77,35 @@ export function RsvpAndGiftForm({
           </button>
         )
       ) : (
-        <div className="rounded-md border border-green-200 bg-green-50 p-4 text-sm text-green-800">
-          Presença confirmada, {guestName}! Obrigado por vir. ✨
+        <div className="overflow-hidden rounded-xl border border-green-200 bg-green-50">
+          <div className="px-4 py-4 text-sm text-green-800">
+            Presença confirmada, <strong>{guestName}</strong>! Obrigado por vir. ✨
+          </div>
+          {rsvpId && (
+            <div
+              className="flex flex-col items-center gap-3 border-t border-green-200 bg-white/60 px-4 py-4 sm:flex-row"
+            >
+              <div className="text-center text-sm text-gray-600 sm:text-left">
+                <div className="font-medium text-gray-800">📄 Seu convite com QR code está pronto</div>
+                <div className="mt-0.5 text-xs text-gray-500">
+                  Salve ou compartilhe — você vai precisar dele na entrada do evento.
+                </div>
+              </div>
+              <a
+                href={`/convite/${rsvpId}`}
+                target="_blank"
+                rel="noreferrer"
+                className="shrink-0 rounded-lg px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:opacity-90 active:scale-95"
+                style={{
+                  background: accent
+                    ? `linear-gradient(135deg, ${accent}, ${accent}cc)`
+                    : 'linear-gradient(135deg, #10b981, #059669)'
+                }}
+              >
+                Ver convite ↗
+              </a>
+            </div>
+          )}
         </div>
       )}
 
@@ -575,12 +602,12 @@ function GiftCard({
           <div className="rounded-md bg-gray-50 p-3 text-xs text-gray-600">
             <p className="font-medium text-gray-700">Como pagar:</p>
             <p className="mt-1">
-              <strong>No celular:</strong> abra o app do seu banco, escolha "Pagar com Pix" →
-              "Ler QR Code" e aponte para o código abaixo.
+              <strong>No celular:</strong> abra o app do seu banco, escolha {'"'}Pagar com Pix{'"'} →
+              {'"'}Ler QR Code{'"'} e aponte para o código abaixo.
             </p>
             <p className="mt-1">
               <strong>No computador:</strong> copie o código Pix copia-e-cola, abra o app do seu
-              banco no celular e cole em "Pix copia-e-cola".
+              banco no celular e cole em {'"'}Pix copia-e-cola{'"'}.
             </p>
           </div>
 

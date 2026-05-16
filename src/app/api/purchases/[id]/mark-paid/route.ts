@@ -12,12 +12,19 @@ export async function POST(
 ) {
   const { id } = await params;
   const admin = createAdminClient();
-  const { error } = await admin
+  const { data, error } = await admin
     .from('gift_purchases')
     .update({ status: 'paid_claimed' })
     .eq('id', id)
-    .eq('status', 'pending');
+    .eq('status', 'pending')
+    .select('id');
 
   if (error) return NextResponse.json({ error: error.message }, { status: 400 });
+  if (!data || data.length === 0) {
+    return NextResponse.json(
+      { error: 'Compra não encontrada ou já foi processada' },
+      { status: 400 }
+    );
+  }
   return NextResponse.json({ ok: true });
 }

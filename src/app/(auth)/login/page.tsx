@@ -87,7 +87,7 @@ export default function LoginPage() {
             {authError.reason === 'pkce' ? (
               <>
                 Os cookies de autenticação ficaram confusos. <strong>Já limpei
-                automaticamente</strong> — clique em "Entrar com Google" abaixo e o login deve
+                automaticamente</strong> — clique em {'"'}Entrar com Google{'"'} abaixo e o login deve
                 funcionar agora.
               </>
             ) : (
@@ -102,7 +102,7 @@ export default function LoginPage() {
           {authError.reason !== 'pkce' && (
             <ul className="list-disc pl-5 text-[11px] text-red-700">
               <li>Não use modo anônimo/aba privada (bloqueia cookies)</li>
-              <li>Termine o login no mesmo navegador onde clicou em "Entrar com Google"</li>
+              <li>Termine o login no mesmo navegador onde clicou em {'"'}Entrar com Google{'"'}</li>
               <li>Desbloqueie cookies de terceiros pra google.com e supabase.co</li>
               <li>Não recarregue a página depois que o Google te trouxer de volta</li>
             </ul>

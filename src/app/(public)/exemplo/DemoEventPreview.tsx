@@ -336,7 +336,7 @@ export function DemoEventPreview({
             <div className="rounded-md bg-gray-50 p-3 text-xs text-gray-600">
               <p className="font-medium text-gray-700">Como pagar:</p>
               <p className="mt-1">
-                <strong>No celular:</strong> abre o app do banco, "Pagar com Pix" → "Ler QR Code".
+                <strong>No celular:</strong> abre o app do banco, {'"'}Pagar com Pix{'"'} → {'"'}Ler QR Code{'"'}.
               </p>
               <p className="mt-1">
                 <strong>No computador:</strong> copia o código Pix e cola no app do banco.
@@ -367,7 +367,7 @@ export function DemoEventPreview({
                   📋 Copiar código Pix
                 </div>
                 <div className="rounded-md border border-dashed border-gray-300 bg-white p-2 text-[11px] text-gray-600">
-                  Depois de pagar, o convidado clica em <strong>"Já paguei"</strong> e o anfitrião
+                  Depois de pagar, o convidado clica em <strong>{'"'}Já paguei{'"'}</strong> e o anfitrião
                   é avisado pra confirmar.
                 </div>
               </div>

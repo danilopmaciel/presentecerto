@@ -1,6 +1,6 @@
 'use server';
 
-import { createClient } from '@/lib/supabase/server';
+import { createClient, createAdminClient } from '@/lib/supabase/server';
 import { rsvpSchema } from '@/lib/validation/schemas';
 
 const FIELD_LABELS: Record<string, string> = {
@@ -75,11 +75,11 @@ export async function submitRsvp(formData: FormData) {
   }
 
   const supabase = await createClient();
-  const { data, error } = await supabase
-    .from('rsvps')
-    .insert(parsed.data)
-    .select('id')
-    .single();
+
+  // RLS verifica que o evento está publicado. O SELECT após insert é bloqueado
+  // pela policy de leitura (só o dono lê), por isso usamos admin para recuperar
+  // o id logo em seguida.
+  const { error } = await supabase.from('rsvps').insert(parsed.data);
 
   if (error) {
     // eslint-disable-next-line no-console
@@ -87,5 +87,15 @@ export async function submitRsvp(formData: FormData) {
     return { error: `Erro ao salvar: ${error.message}` };
   }
 
-  return { success: true, id: data.id };
+  const admin = createAdminClient();
+  const { data: inserted } = await admin
+    .from('rsvps')
+    .select('id')
+    .eq('event_id', parsed.data.event_id)
+    .eq('guest_name', parsed.data.guest_name)
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .single();
+
+  return { success: true, id: inserted?.id ?? null };
 }

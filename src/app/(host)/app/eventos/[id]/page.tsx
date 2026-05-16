@@ -19,6 +19,7 @@ import { PixKeyEditor } from '@/components/PixKeyEditor';
 import { PlanSwitcher } from '@/components/PlanSwitcher';
 import { normalizePixKey } from '@/lib/pix-key';
 import { notifyAdmin, escapeHtml } from '@/lib/notify';
+import { ScannerSection } from './ScannerSection';
 
 export default async function EventDetailPage({
   params
@@ -48,7 +49,7 @@ export default async function EventDetailPage({
 
   const { data: rsvps } = await supabase
     .from('rsvps')
-    .select('id, guest_name, adults, children, created_at')
+    .select('id, guest_name, adults, children, created_at, checked_in_at')
     .eq('event_id', event.id)
     .order('created_at', { ascending: false })
     .limit(50);
@@ -77,6 +78,7 @@ export default async function EventDetailPage({
   const totalArrecadado = paidPurchases.reduce((s, p) => s + p.amount_cents, 0);
   const cotasPagas = paidPurchases.reduce((s, p) => s + p.quotas, 0);
   const aguardandoConfirmacao = pendingConfirmation.reduce((s, p) => s + p.amount_cents, 0);
+  const checkedInCount = (rsvps ?? []).filter((r) => !!r.checked_in_at).length;
 
   // --- Server Actions --------------------------------------------------------
 
@@ -125,8 +127,7 @@ export default async function EventDetailPage({
     if (
       !existing ||
       existing.event_id !== eventId ||
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      (existing as any).events.owner_id !== user.id
+      (existing as { events: { owner_id: string } } & typeof existing).events.owner_id !== user.id
     ) {
       return;
     }
@@ -182,8 +183,7 @@ export default async function EventDetailPage({
     if (
       !existing ||
       existing.event_id !== eventId ||
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      (existing as any).events.owner_id !== user.id
+      (existing as { events: { owner_id: string } } & typeof existing).events.owner_id !== user.id
     ) {
       return { error: 'Sem permissão.' };
     }
@@ -380,7 +380,8 @@ export default async function EventDetailPage({
     await supabase
       .from('gift_purchases')
       .update({ status: 'paid', paid_at: new Date().toISOString() })
-      .eq('id', purchaseId);
+      .eq('id', purchaseId)
+      .eq('status', 'paid_claimed');
     revalidatePath(`/app/eventos/${eventId}`);
   }
 
@@ -424,9 +425,37 @@ export default async function EventDetailPage({
       .single();
     if (!ev || ev.owner_id !== user.id) return;
 
-    // Se já foi pago, gera crédito antes de excluir
     const wasPaid =
       ev.plan_payment_status === 'paid' || ev.plan_payment_status === 'paid_claimed';
+
+    // Deleta na ordem correta (filhos antes dos pais) e verifica cada etapa.
+    // Crédito só é gerado depois que o evento realmente sair do banco —
+    // isso evita ter crédito sem o evento ter sido excluído.
+    const { error: e1 } = await supabase
+      .from('gift_purchases')
+      .delete()
+      .eq('event_id', eventId);
+    if (e1) return;
+
+    const { error: e2 } = await supabase
+      .from('gift_items')
+      .delete()
+      .eq('event_id', eventId);
+    if (e2) return;
+
+    const { error: e3 } = await supabase
+      .from('rsvps')
+      .delete()
+      .eq('event_id', eventId);
+    if (e3) return;
+
+    const { error: e4 } = await supabase
+      .from('events')
+      .delete()
+      .eq('id', eventId);
+    if (e4) return;
+
+    // Evento excluído com sucesso — agora é seguro gerar o crédito
     if (wasPaid) {
       await supabase.from('user_credits').insert({
         user_id: user.id,
@@ -437,7 +466,6 @@ export default async function EventDetailPage({
         status: 'available'
       });
 
-      // Notifica o admin (você) — o anfitrião acabou de virar credor
       await notifyAdmin(
         [
           `🪙 Crédito gerado por exclusão de evento pago`,
@@ -449,11 +477,6 @@ export default async function EventDetailPage({
       );
     }
 
-    // Delete cascata — depende do ON DELETE CASCADE definido nas FKs.
-    await supabase.from('gift_purchases').delete().eq('event_id', eventId);
-    await supabase.from('gift_items').delete().eq('event_id', eventId);
-    await supabase.from('rsvps').delete().eq('event_id', eventId);
-    await supabase.from('events').delete().eq('id', eventId);
     redirect(wasPaid ? '/app/conta?credit=1' : '/app');
   }
 
@@ -845,12 +868,20 @@ export default async function EventDetailPage({
       )}
 
       {/* Stats */}
-      <section className="grid gap-4 md:grid-cols-4">
+      <section className="grid gap-4 sm:grid-cols-2 md:grid-cols-5">
         <Stat label="Confirmados" value={String(rsvps?.length ?? 0)} />
+        <Stat
+          label="Check-ins"
+          value={`${checkedInCount} / ${rsvps?.length ?? 0}`}
+          highlight={checkedInCount > 0}
+        />
         <Stat label="Cotas pagas" value={String(cotasPagas)} />
         <Stat label="Aguardando" value={formatBRL(aguardandoConfirmacao)} />
         <Stat label="Arrecadado" value={formatBRL(totalArrecadado)} />
       </section>
+
+      {/* Scanner de entrada */}
+      <ScannerSection eventId={eventId} />
 
       {/* Danger zone — excluir evento */}
       <section className="rounded-lg border border-gray-200 bg-white p-6">
@@ -867,11 +898,19 @@ export default async function EventDetailPage({
   );
 }
 
-function Stat({ label, value }: { label: string; value: string }) {
+function Stat({ label, value, highlight }: { label: string; value: string; highlight?: boolean }) {
   return (
-    <div className="rounded-md border border-gray-200 bg-white p-4">
-      <div className="text-xs uppercase text-gray-500">{label}</div>
-      <div className="mt-1 text-2xl font-semibold">{value}</div>
+    <div
+      className={`rounded-md border p-4 ${
+        highlight ? 'border-brand-200 bg-brand-50' : 'border-gray-200 bg-white'
+      }`}
+    >
+      <div className={`text-xs uppercase ${highlight ? 'text-brand-600' : 'text-gray-500'}`}>
+        {label}
+      </div>
+      <div className={`mt-1 text-2xl font-semibold ${highlight ? 'text-brand-700' : ''}`}>
+        {value}
+      </div>
     </div>
   );
 }
