@@ -27,9 +27,7 @@ export default async function PublicEventPage({
 
   const { data: event } = await admin
     .from('events')
-    .select(
-      'id, slug, owner_id, title, description, starts_at, location_text, location_maps_url, theme, status, plan_tier, gift_suggestions, custom_bg_path, custom_palette'
-    )
+    .select('id, slug, owner_id, title, description, starts_at, location_text, location_maps_url, theme, status, plan_tier, gift_suggestions, custom_bg_path, custom_palette, enable_buffet, buffet_title, buffet_description')
     .eq('slug', slug)
     .single();
 
@@ -59,11 +57,13 @@ export default async function PublicEventPage({
     }
   }
 
-  const giftsWithAvail = (gifts ?? []).map((g) => ({
-    ...g,
-    reserved: reservedMap.get(g.id) ?? 0,
-    available: g.quota_total - (reservedMap.get(g.id) ?? 0)
-  }));
+  const giftsWithAvail = (gifts ?? [])
+    .filter((g) => event.enable_buffet || g.kind !== 'buffet')
+    .map((g) => ({
+      ...g,
+      reserved: reservedMap.get(g.id) ?? 0,
+      available: g.quota_total - (reservedMap.get(g.id) ?? 0)
+    }));
 
   // Colaboradores — só selecionamos buyer_name (NÃO email/phone). Esse é o filtro
   // de privacidade: mesmo via admin client, esses campos sensíveis nunca chegam
@@ -186,6 +186,8 @@ export default async function PublicEventPage({
           gifts={giftsWithAvail}
           cardClass={themeCardClass}
           accent={themeAccent}
+          buffetTitle={event.buffet_title}
+          buffetDescription={event.buffet_description}
         />
 
         {/* Colaboradores — quem já presenteou */}

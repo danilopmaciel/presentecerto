@@ -1,20 +1,32 @@
 import Link from 'next/link';
+import { createClient } from '@/lib/supabase/server';
 
-export default function LandingPage() {
+export default async function LandingPage() {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+
   return (
     <main className="min-h-screen bg-gradient-to-b from-brand-50 to-white">
       <header className="mx-auto flex max-w-5xl items-center justify-between px-6 py-6">
         <div className="text-xl font-bold text-brand-700">PresenteCerto</div>
         <nav className="flex gap-3 text-sm">
-          <Link href="/login" className="rounded-md px-3 py-2 hover:bg-brand-100">
-            Entrar
-          </Link>
-          <Link
-            href="/login?create=1"
-            className="rounded-md bg-brand-500 px-3 py-2 text-white hover:bg-brand-600"
-          >
-            Criar meu evento
-          </Link>
+          {user ? (
+            <Link href="/app" className="rounded-md bg-brand-100 px-3 py-2 font-medium text-brand-700 hover:bg-brand-200">
+              Meu Painel
+            </Link>
+          ) : (
+            <>
+              <Link href="/login" className="rounded-md px-3 py-2 hover:bg-brand-100">
+                Entrar
+              </Link>
+              <Link
+                href="/login?create=1"
+                className="rounded-md bg-brand-500 px-3 py-2 text-white hover:bg-brand-600"
+              >
+                Criar meu evento
+              </Link>
+            </>
+          )}
         </nav>
       </header>
 
@@ -29,7 +41,7 @@ export default function LandingPage() {
         </p>
         <div className="mt-10 flex flex-col items-center justify-center gap-3 sm:flex-row">
           <Link
-            href="/exemplo"
+            href="/e/teste-mdjz"
             className="rounded-md bg-brand-500 px-6 py-3 text-white shadow hover:bg-brand-600"
           >
             Ver exemplo de evento

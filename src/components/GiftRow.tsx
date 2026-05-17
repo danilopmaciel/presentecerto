@@ -129,10 +129,10 @@ export function GiftRow({
             value={imageUrl}
             onChange={setImageUrl}
             scope="gift"
-            enableUrlFetch
+            enableUrlFetch={!isBuffet}
             enableAi={enableAi}
             eventId={eventId}
-            placeholder="URL da foto ou link do produto"
+            placeholder={isBuffet ? 'URL da foto (opcional)' : 'URL da foto ou link do produto'}
           />
         </div>
 
@@ -149,22 +149,26 @@ export function GiftRow({
               className="mt-1 w-full rounded-md border border-gray-300 bg-white px-3 py-2"
             />
           </label>
-          <label className="block text-sm">
-            {isBuffet ? 'Vagas (lugares)' : 'Nº de cotas'}
-            <input
-              name="quota_total"
-              type="number"
-              min={Math.max(1, sold)}
-              required
-              defaultValue={gift.quota_total}
-              className="mt-1 w-full rounded-md border border-gray-300 bg-white px-3 py-2"
-            />
-            {hasSales && (
-              <span className="mt-1 block text-[11px] text-gray-500">
-                Mínimo {sold} ({isBuffet ? 'já confirmadas' : 'já vendidas'}).
-              </span>
-            )}
-          </label>
+          {isBuffet ? (
+            <input type="hidden" name="quota_total" value={gift.quota_total || 999999} />
+          ) : (
+            <label className="block text-sm">
+              Nº de cotas
+              <input
+                name="quota_total"
+                type="number"
+                min={Math.max(1, sold)}
+                required
+                defaultValue={gift.quota_total}
+                className="mt-1 w-full rounded-md border border-gray-300 bg-white px-3 py-2"
+              />
+              {hasSales && (
+                <span className="mt-1 block text-[11px] text-gray-500">
+                  Mínimo {sold} (já vendidas).
+                </span>
+              )}
+            </label>
+          )}
         </div>
 
         {error && <div className="text-sm text-red-600">{error}</div>}
@@ -218,7 +222,7 @@ export function GiftRow({
           )}
           <div className="text-sm text-gray-500">
             {gift.kind === 'buffet'
-              ? `${formatBRL(gift.quota_value_cents)} / pessoa — ${sold} de ${gift.quota_total} confirmadas`
+              ? `${formatBRL(gift.quota_value_cents)} / pessoa`
               : `${formatBRL(gift.quota_value_cents)} / cota — ${sold} de ${gift.quota_total} vendidas`}
           </div>
         </div>

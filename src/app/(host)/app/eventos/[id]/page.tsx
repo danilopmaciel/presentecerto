@@ -88,10 +88,10 @@ export default async function EventDetailPage({
     const title = String(formData.get('title') ?? '').trim();
     const description = String(formData.get('description') ?? '').trim();
     const image_path = String(formData.get('image_path') ?? '').trim();
-    const quota_value_cents = Math.round(Number(formData.get('quota_value') ?? 0) * 100);
-    const quota_total = Number(formData.get('quota_total') ?? 1);
     const rawKind = String(formData.get('kind') ?? 'gift');
     const kind = rawKind === 'buffet' ? 'buffet' : 'gift';
+    const quota_value_cents = Math.round(Number(formData.get('quota_value') ?? 0) * 100);
+    const quota_total = Number(formData.get('quota_total') ?? 1);
 
     if (!title || quota_value_cents <= 0 || quota_total <= 0) return;
 
@@ -100,9 +100,9 @@ export default async function EventDetailPage({
       title,
       description: description || null,
       image_path: image_path || null,
+      kind,
       quota_value_cents,
-      quota_total,
-      kind
+      quota_total
     });
     revalidatePath(`/app/eventos/${eventId}`);
   }
@@ -135,10 +135,10 @@ export default async function EventDetailPage({
     const title = String(formData.get('title') ?? '').trim();
     const description = String(formData.get('description') ?? '').trim();
     const image_path = String(formData.get('image_path') ?? '').trim();
-    const quota_value_cents = Math.round(Number(formData.get('quota_value') ?? 0) * 100);
-    const quota_total = Number(formData.get('quota_total') ?? 1);
     const rawKind = String(formData.get('kind') ?? 'gift');
     const kind = rawKind === 'buffet' ? 'buffet' : 'gift';
+    const quota_value_cents = Math.round(Number(formData.get('quota_value') ?? 0) * 100);
+    const quota_total = Number(formData.get('quota_total') ?? 1);
     if (!title || quota_value_cents <= 0 || quota_total <= 0) return;
 
     // Não permite reduzir o total abaixo do que já foi vendido
@@ -156,11 +156,29 @@ export default async function EventDetailPage({
         title,
         description: description || null,
         image_path: image_path || null,
+        kind,
         quota_value_cents,
-        quota_total: safeTotal,
-        kind
+        quota_total: safeTotal
       })
       .eq('id', giftId);
+    revalidatePath(`/app/eventos/${eventId}`);
+  }
+
+  async function updateBuffetSettings(formData: FormData) {
+    'use server';
+    const supabase = await createClient();
+    const enable_buffet = formData.get('enable_buffet') === 'on';
+    const buffet_title = String(formData.get('buffet_title') ?? 'Buffet').trim();
+    const buffet_description = String(formData.get('buffet_description') ?? '').trim();
+
+    await supabase
+      .from('events')
+      .update({
+        enable_buffet,
+        buffet_title,
+        buffet_description: buffet_description || null
+      })
+      .eq('id', eventId);
     revalidatePath(`/app/eventos/${eventId}`);
   }
 
@@ -666,6 +684,69 @@ export default async function EventDetailPage({
         </section>
       )}
 
+      {/* Configurações de Buffet */}
+        <section className="rounded-xl border border-gray-200 bg-gray-50 p-6 shadow-sm">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-lg font-semibold text-gray-900">Configurações de Buffet / Contribuição</h2>
+              <p className="text-sm text-gray-500">
+                Habilite uma seção separada para arrecadar valores por pessoa (ex: buffet, convites, kits).
+              </p>
+            </div>
+            <div className={`rounded-full px-3 py-1 text-xs font-bold uppercase ${event.enable_buffet ? 'bg-green-100 text-green-700' : 'bg-gray-200 text-gray-600'}`}>
+              {event.enable_buffet ? 'Ativado' : 'Desativado'}
+            </div>
+          </div>
+
+          {!event.enable_buffet && buffetItems.length > 0 && (
+            <div className="mt-4 rounded-md bg-yellow-50 p-3 text-sm text-yellow-800 border border-yellow-200">
+              💡 <strong>Atenção:</strong> Você tem {buffetItems.length} item(ns) de buffet, mas a seção está <strong>desativada</strong>. Os convidados não conseguirão vê-los até que você ative abaixo.
+            </div>
+          )}
+
+          <form action={updateBuffetSettings} className="mt-6 space-y-4">
+          <label className="flex items-center gap-3">
+            <input
+              type="checkbox"
+              name="enable_buffet"
+              defaultChecked={event.enable_buffet}
+              className="h-4 w-4 rounded border-gray-300 text-brand-600 focus:ring-brand-500"
+            />
+            <span className="text-sm font-medium text-gray-700">Habilitar seção de buffet</span>
+          </label>
+
+          <div className="grid gap-4 sm:grid-cols-2">
+            <label className="block text-sm">
+              Título da seção
+              <input
+                name="buffet_title"
+                defaultValue={event.buffet_title}
+                placeholder="Ex: Buffet, Convite, Contribuição"
+                className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2"
+              />
+            </label>
+          </div>
+
+          <label className="block text-sm">
+            Descrição / Instruções
+            <textarea
+              name="buffet_description"
+              defaultValue={event.buffet_description}
+              rows={3}
+              placeholder="Explique como funciona a contribuição..."
+              className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2"
+            />
+          </label>
+
+          <button
+            type="submit"
+            className="rounded-md bg-brand-500 px-4 py-2 text-sm text-white hover:bg-brand-600"
+          >
+            Salvar configurações de buffet
+          </button>
+        </form>
+      </section>
+
       {/* Modo teste — pular pagamento (gated por NEXT_PUBLIC_TEST_MODE=true) */}
       {testMode && !isPublished && (
         <section className="rounded-lg border border-purple-300 bg-purple-50 p-4">
@@ -783,7 +864,7 @@ export default async function EventDetailPage({
                   image_path: g.image_path,
                   quota_value_cents: g.quota_value_cents,
                   quota_total: g.quota_total,
-                  kind: (g.kind === 'buffet' ? 'buffet' : 'gift') as 'gift' | 'buffet'
+                  kind: g.kind
                 }}
                 sold={sold}
                 onUpdate={updateGift}

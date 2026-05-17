@@ -31,7 +31,6 @@ export async function submitRsvp(formData: FormData) {
   }
 
   // 2. Normaliza valores antes de validar — campos opcionais vazios viram undefined.
-  //    Zod fica menos exigente assim e a UX é a esperada.
   const str = (v: FormDataEntryValue | null): string | undefined => {
     if (v == null) return undefined;
     const s = String(v).trim();
@@ -56,18 +55,8 @@ export async function submitRsvp(formData: FormData) {
 
   const parsed = rsvpSchema.safeParse(rawData);
   if (!parsed.success) {
-    // Loga no servidor pra investigar
     // eslint-disable-next-line no-console
-    console.error('[submitRsvp] validation failed', {
-      issues: parsed.error.issues,
-      received: {
-        ...rawData,
-        // não loga o valor exato dos PII, só presença/tamanho
-        guest_name: rawData.guest_name ? `<${rawData.guest_name.length} chars>` : 'missing',
-        guest_email: rawData.guest_email ? '<set>' : 'missing',
-        guest_phone: rawData.guest_phone ? `<${rawData.guest_phone.length} chars>` : 'missing'
-      }
-    });
+    console.error('[submitRsvp] validation failed', { issues: parsed.error.issues });
     return {
       error: formatZodIssues(parsed.error.issues),
       issues: parsed.error.issues
@@ -77,8 +66,7 @@ export async function submitRsvp(formData: FormData) {
   const supabase = await createClient();
 
   // RLS verifica que o evento está publicado. O SELECT após insert é bloqueado
-  // pela policy de leitura (só o dono lê), por isso usamos admin para recuperar
-  // o id logo em seguida.
+  // pela policy de leitura (só o dono lê), por isso usamos admin para recuperar o id.
   const { error } = await supabase.from('rsvps').insert(parsed.data);
 
   if (error) {

@@ -22,12 +22,16 @@ export function RsvpAndGiftForm({
   eventId,
   gifts,
   cardClass,
-  accent
+  accent,
+  buffetTitle = 'Buffet',
+  buffetDescription = 'O anfitrião sugere uma contribuição por pessoa pra ajudar com o buffet. Você escolhe quantas vagas vai cobrir.'
 }: {
   eventId: string;
   gifts: Gift[];
   cardClass?: string;
   accent?: string;
+  buffetTitle?: string;
+  buffetDescription?: string;
 }) {
   const [rsvpOpen, setRsvpOpen] = useState(false);
   const [rsvpDone, setRsvpDone] = useState(false);
@@ -79,12 +83,13 @@ export function RsvpAndGiftForm({
       ) : (
         <div className="overflow-hidden rounded-xl border border-green-200 bg-green-50">
           <div className="px-4 py-4 text-sm text-green-800">
-            Presença confirmada, <strong>{guestName}</strong>! Obrigado por vir. ✨
+            <div className="font-semibold text-green-900">✨ Presença confirmada!</div>
+            <p className="mt-1">
+              Obrigado por confirmar, {guestName}.{buffetItems.length > 0 && ' Aproveite para garantir sua contribuição abaixo.'}
+            </p>
           </div>
           {rsvpId && (
-            <div
-              className="flex flex-col items-center gap-3 border-t border-green-200 bg-white/60 px-4 py-4 sm:flex-row"
-            >
+            <div className="flex flex-col items-center gap-3 border-t border-green-200 bg-white/60 px-4 py-4 sm:flex-row">
               <div className="text-center text-sm text-gray-600 sm:text-left">
                 <div className="font-medium text-gray-800">📄 Seu convite com QR code está pronto</div>
                 <div className="mt-0.5 text-xs text-gray-500">
@@ -111,7 +116,7 @@ export function RsvpAndGiftForm({
 
       {/* Buffet — lista separada quando o anfitrião usa esse modelo */}
       {buffetItems.length > 0 && (
-        <section>
+        <section className={`rounded-xl border-2 p-5 ${rsvpDone ? 'border-brand-200 bg-brand-50/30 shadow-md' : 'border-transparent'}`}>
           <div className="flex items-center gap-2">
             <span
               className="inline-flex h-7 w-7 items-center justify-center rounded-full text-base text-white"
@@ -119,11 +124,10 @@ export function RsvpAndGiftForm({
             >
               🍽️
             </span>
-            <h2 className="text-lg font-semibold">Contribua com o buffet</h2>
+            <h2 className="text-lg font-semibold">{buffetTitle}</h2>
           </div>
           <p className="mt-1 text-sm text-gray-600">
-            O anfitrião sugere uma contribuição por pessoa pra ajudar com o buffet. Você escolhe
-            quantas vagas vai cobrir.
+            {buffetDescription}
           </p>
           <div className="mt-4 space-y-3">
             {buffetItems.map((g) => (
@@ -137,6 +141,7 @@ export function RsvpAndGiftForm({
                 accent={accent}
                 rsvpAdults={adults}
                 rsvpChildren={children}
+                buffetLabel={buffetTitle}
               />
             ))}
           </div>
@@ -215,8 +220,6 @@ function RsvpForm({
       style={accent ? { borderTop: `4px solid ${accent}` } : undefined}
     >
       <input type="hidden" name="event_id" value={eventId} />
-
-      {/* Honeypot field - invisível para humanos, preenchido por bots */}
       <input
         type="text"
         name="website_url"
@@ -343,11 +346,9 @@ function SoldOutStamp({ label = 'ESGOTADO' }: { label?: string }) {
   );
 }
 
-/** Decide a quantidade default pra um item baseado no RSVP. */
 function defaultQuantityFor(gift: Gift, rsvpAdults: number, rsvpChildren: number): number {
   if (gift.kind !== 'buffet') return 1;
   const title = gift.title.toLowerCase();
-  // Tira acentos pra reconhecer "criança" e "crianca"
   const norm = title.normalize('NFD').replace(/[̀-ͯ]/g, '');
   if (/crianc|kid|infant/.test(norm)) {
     return Math.max(0, Math.min(gift.available, rsvpChildren));
@@ -366,7 +367,8 @@ function GiftCard({
   cardClass = 'bg-white',
   accent,
   rsvpAdults = 0,
-  rsvpChildren = 0
+  rsvpChildren = 0,
+  buffetLabel = 'Buffet'
 }: {
   gift: Gift;
   defaultBuyerName: string;
@@ -376,6 +378,7 @@ function GiftCard({
   accent?: string;
   rsvpAdults?: number;
   rsvpChildren?: number;
+  buffetLabel?: string;
 }) {
   const isBuffet = gift.kind === 'buffet';
   const unitLabelPlural = isBuffet ? 'pessoas' : 'cotas';
@@ -402,12 +405,10 @@ function GiftCard({
   const [error, setError] = useState<string | null>(null);
   const soldOut = gift.available <= 0;
 
-  // Re-ajusta a quantidade default quando RSVP muda (ex.: usuário acabou de confirmar)
   useEffect(() => {
     const next = defaultQuantityFor(gift, rsvpAdults, rsvpChildren);
     if (next > 0) setQuotas(next);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [rsvpAdults, rsvpChildren, gift.id]);
+  }, [rsvpAdults, rsvpChildren, gift.id, gift.available]);
 
   useEffect(() => {
     if (!result?.pix_payload) {
@@ -492,7 +493,7 @@ function GiftCard({
                 className="rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-white"
                 style={{ background: accent ?? '#3b82f6' }}
               >
-                Buffet
+                {buffetLabel}
               </span>
             )}
             {soldOut && (
@@ -506,14 +507,16 @@ function GiftCard({
           )}
           <div className="mt-1 text-sm text-gray-500">
             {valueLabel}
-            {!soldOut && ` · ${availableLabel}`}
+            {!isBuffet && !soldOut && ` · ${availableLabel}`}
           </div>
-          <ProgressBar
-            reserved={gift.reserved}
-            total={gift.quota_total}
-            accent={accent}
-            unitLabel={unitLabelPlural}
-          />
+          {!isBuffet && (
+            <ProgressBar
+              reserved={gift.reserved}
+              total={gift.quota_total}
+              accent={accent}
+              unitLabel={unitLabelPlural}
+            />
+          )}
         </div>
         {!soldOut && (
           <button
@@ -555,7 +558,6 @@ function GiftCard({
             )}
           </label>
 
-          {/* Honeypot */}
           <input
             type="text"
             name="website_url"
@@ -586,6 +588,11 @@ function GiftCard({
           <div className="text-sm text-gray-700">
             Total: <strong>{formatBRL(gift.quota_value_cents * quotas)}</strong>
           </div>
+          {isBuffet && !result && (
+            <div className="rounded bg-brand-100 p-2 text-[11px] text-brand-800">
+              💡 Você receberá o código Pix para pagamento assim que clicar no botão abaixo.
+            </div>
+          )}
           <button
             disabled={submitting}
             className="w-full rounded-md py-2 text-white shadow-sm hover:opacity-90 disabled:opacity-60"
@@ -658,7 +665,7 @@ function GiftCard({
                     method: 'POST'
                   });
                 } catch {
-                  // falha silenciosa — anfitrião pode acompanhar manualmente
+                  // falha silenciosa
                 }
                 setConfirming(false);
                 setConfirmed(true);

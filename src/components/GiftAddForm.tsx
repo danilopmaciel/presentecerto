@@ -139,17 +139,21 @@ export function GiftAddForm({
             className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2"
           />
         </label>
-        <label className="block text-sm">
-          {isBuffet ? 'Vagas (lugares no buffet)' : 'Nº de cotas'}
-          <input
-            name="quota_total"
-            type="number"
-            min="1"
-            defaultValue={isBuffet ? 30 : 10}
-            required
-            className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2"
-          />
-        </label>
+        {isBuffet ? (
+          <input type="hidden" name="quota_total" value="999999" />
+        ) : (
+          <label className="block text-sm">
+            Nº de cotas
+            <input
+              name="quota_total"
+              type="number"
+              min="1"
+              defaultValue={10}
+              required
+              className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2"
+            />
+          </label>
+        )}
       </div>
       <button
         disabled={pending}
