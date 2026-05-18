@@ -1,6 +1,7 @@
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import { createClient, createAdminClient } from '@/lib/supabase/server';
+import { isAdminEmail } from '@/lib/admin';
 import { getTheme } from '@/lib/themes';
 import { RsvpAndGiftForm } from './RsvpAndGiftForm';
 import { GiftSuggestionsDisplay } from '@/components/GiftSuggestionsDisplay';
@@ -33,9 +34,10 @@ export default async function PublicEventPage({
 
   if (!event) notFound();
 
-  // Permite preview pro dono mesmo se ainda não publicou
+  // Permite preview pro dono e para admin mesmo se ainda não publicou
   const isOwnerPreview = !!user && event.owner_id === user.id;
-  if (event.status !== 'published' && !isOwnerPreview) notFound();
+  const isAdminView = !!user && isAdminEmail(user.email);
+  if (event.status !== 'published' && !isOwnerPreview && !isAdminView) notFound();
 
   const { data: gifts } = await admin
     .from('gift_items')
@@ -133,6 +135,11 @@ export default async function PublicEventPage({
       {isPreview && (
         <div className="relative bg-yellow-400 px-4 py-2 text-center text-sm font-medium text-yellow-900">
           🚧 Pré-visualização — esta página ainda não foi publicada para os convidados.
+        </div>
+      )}
+      {!isPreview && isAdminView && (
+        <div className="relative bg-blue-600 px-4 py-2 text-center text-sm font-medium text-white">
+          👁 Visão admin — página pública do evento.
         </div>
       )}
       <div className="relative mx-auto max-w-2xl px-4 py-10 sm:px-6">
