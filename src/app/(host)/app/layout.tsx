@@ -33,13 +33,13 @@ export default async function HostLayout({ children }: { children: React.ReactNo
   }
 
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-dvh bg-white">
       <header className="border-b border-gray-200 bg-white">
-        <div className="mx-auto flex max-w-5xl items-center justify-between px-6 py-4">
+        <div className="mx-auto flex max-w-5xl items-center justify-between px-4 py-4 sm:px-6">
           <Link href="/app" className="text-lg font-bold text-brand-700">
             PresenteCerto
           </Link>
-          <div className="flex items-center gap-4 text-sm">
+          <div className="flex items-center gap-2 text-sm sm:gap-4">
             {isAdmin && (
               <Link
                 href="/app/admin"
@@ -59,16 +59,16 @@ export default async function HostLayout({ children }: { children: React.ReactNo
             >
               Conta
             </Link>
-            <span className="text-gray-600">{user.email}</span>
+            <span className="hidden text-gray-600 md:inline">{user.email}</span>
             <form action={signOut}>
-              <button className="rounded-md border border-gray-300 px-3 py-1.5 hover:bg-gray-50">
+              <button className="rounded-md border border-gray-300 px-3 py-2 hover:bg-gray-50">
                 Sair
               </button>
             </form>
           </div>
         </div>
       </header>
-      <main className="mx-auto max-w-5xl px-6 py-8">{children}</main>
+      <main className="mx-auto max-w-5xl px-4 py-8 sm:px-6">{children}</main>
     </div>
   );
 }

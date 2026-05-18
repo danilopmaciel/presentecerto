@@ -521,7 +521,7 @@ function GiftCard({
         {!soldOut && (
           <button
             onClick={() => setOpen((v) => !v)}
-            className="shrink-0 rounded-md px-3 py-1.5 text-sm text-white shadow-sm hover:opacity-90"
+            className="shrink-0 rounded-md px-3 py-2.5 text-sm text-white shadow-sm hover:opacity-90"
             style={{ background: accent ?? '#3b82f6' }}
           >
             {ctaLabel}

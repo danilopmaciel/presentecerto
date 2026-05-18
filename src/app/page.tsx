@@ -6,8 +6,8 @@ export default async function LandingPage() {
   const { data: { user } } = await supabase.auth.getUser();
 
   return (
-    <main className="min-h-screen bg-gradient-to-b from-brand-50 to-white">
-      <header className="mx-auto flex max-w-5xl items-center justify-between px-6 py-6">
+    <main className="min-h-dvh bg-gradient-to-b from-brand-50 to-white">
+      <header className="mx-auto flex max-w-5xl items-center justify-between px-4 py-6 sm:px-6">
         <div className="text-xl font-bold text-brand-700">PresenteCerto</div>
         <nav className="flex gap-3 text-sm">
           {user ? (
@@ -30,8 +30,8 @@ export default async function LandingPage() {
         </nav>
       </header>
 
-      <section className="mx-auto max-w-3xl px-6 py-16 text-center">
-        <h1 className="text-4xl font-bold leading-tight md:text-5xl">
+      <section className="mx-auto max-w-3xl px-4 py-10 text-center sm:px-6 md:py-16">
+        <h1 className="text-3xl font-bold leading-tight sm:text-4xl md:text-5xl">
           Seu aniversário,{' '}
           <span className="text-brand-600">sem planilha no grupo do WhatsApp</span>.
         </h1>
@@ -59,7 +59,7 @@ export default async function LandingPage() {
       </section>
 
       {/* Comparativo de planos */}
-      <section id="planos" className="mx-auto max-w-5xl px-6 py-12">
+      <section id="planos" className="mx-auto max-w-5xl px-4 py-12 sm:px-6">
         <h2 className="text-center text-3xl font-bold">Escolha seu plano</h2>
         <p className="mt-2 text-center text-gray-600">
           Pagamento único — sem mensalidade, sem taxa sobre o Pix dos presentes.
@@ -161,7 +161,7 @@ export default async function LandingPage() {
       </section>
 
       {/* Como funciona */}
-      <section className="mx-auto max-w-5xl px-6 pb-24">
+      <section className="mx-auto max-w-5xl px-4 pb-24 sm:px-6">
         <h2 className="text-center text-2xl font-bold">Como funciona</h2>
         <div className="mt-8 grid gap-6 md:grid-cols-3">
           <Card

@@ -112,14 +112,13 @@ export default async function PublicEventPage({
 
   return (
     <main
-      className={`relative min-h-screen overflow-hidden ${customBgUrl ? '' : theme.pageBg}`}
+      className={`relative min-h-dvh overflow-hidden ${customBgUrl ? '' : theme.pageBg}`}
       style={
         customBgUrl
           ? {
               backgroundImage: `linear-gradient(rgba(255,255,255,0.6), rgba(255,255,255,0.6)), url(${customBgUrl})`,
               backgroundSize: 'cover',
-              backgroundPosition: 'center',
-              backgroundAttachment: 'fixed'
+              backgroundPosition: 'center'
             }
           : undefined
       }
@@ -136,7 +135,7 @@ export default async function PublicEventPage({
           🚧 Pré-visualização — esta página ainda não foi publicada para os convidados.
         </div>
       )}
-      <div className="relative mx-auto max-w-2xl px-6 py-10">
+      <div className="relative mx-auto max-w-2xl px-4 py-10 sm:px-6">
         {!customBgUrl && Decoration && <Decoration />}
 
         {!customBgUrl && HeroArt && (
