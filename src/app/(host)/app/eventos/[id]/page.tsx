@@ -2,7 +2,8 @@ import Link from 'next/link';
 import { redirect, notFound } from 'next/navigation';
 import { revalidatePath } from 'next/cache';
 import QRCode from 'qrcode';
-import { createClient } from '@/lib/supabase/server';
+import { createClient, createAdminClient } from '@/lib/supabase/server';
+import { isAdminEmail } from '@/lib/admin';
 import { getPaymentProvider } from '@/lib/payments';
 import { formatBRL } from '@/lib/utils';
 import { THEMES } from '@/lib/themes';
@@ -33,37 +34,41 @@ export default async function EventDetailPage({
   } = await supabase.auth.getUser();
   if (!user) redirect('/login');
 
-  const { data: event } = await supabase
+  const isAdmin = isAdminEmail(user.email);
+
+  // Admin usa service_role para bypassar RLS e ver eventos de qualquer dono.
+  const reader = isAdmin ? createAdminClient() : supabase;
+  const { data: event } = await reader
     .from('events')
     .select('*')
     .eq('id', eventId)
     .single();
 
-  if (!event || event.owner_id !== user.id) notFound();
+  if (!event || (!isAdmin && event.owner_id !== user.id)) notFound();
 
-  const { data: gifts } = await supabase
+  const { data: gifts } = await reader
     .from('gift_items')
     .select('*')
     .eq('event_id', event.id)
     .order('sort_order', { ascending: true });
 
-  const { data: rsvps } = await supabase
+  const { data: rsvps } = await reader
     .from('rsvps')
     .select('id, guest_name, adults, children, created_at, checked_in_at')
     .eq('event_id', event.id)
     .order('created_at', { ascending: false })
     .limit(50);
 
-  const { data: purchases } = await supabase
+  const { data: purchases } = await reader
     .from('gift_purchases')
     .select('id, buyer_name, buyer_email, quotas, amount_cents, status, paid_at, gift_item_id, created_at')
     .eq('event_id', event.id)
     .order('created_at', { ascending: false });
 
-  const { data: profile } = await supabase
+  const { data: profile } = await reader
     .from('profiles')
     .select('pix_key')
-    .eq('id', user.id)
+    .eq('id', event.owner_id)
     .single();
 
   const giftTitleById = new Map((gifts ?? []).map((g) => [g.id, g.title]));
