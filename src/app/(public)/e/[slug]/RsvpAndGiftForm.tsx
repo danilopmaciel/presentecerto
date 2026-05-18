@@ -396,7 +396,8 @@ function GiftCard({
   const initialQty = defaultQuantityFor(gift, rsvpAdults, rsvpChildren);
 
   const [open, setOpen] = useState(false);
-  const [quotas, setQuotas] = useState(initialQty > 0 ? initialQty : 1);
+  const [quotasStr, setQuotasStr] = useState(String(initialQty > 0 ? initialQty : 1));
+  const quotas = Math.max(1, Math.min(gift.available, Number(quotasStr) || 1));
   const [submitting, setSubmitting] = useState(false);
   const [result, setResult] = useState<{ id: string; pix_payload: string; amount_cents: number } | null>(null);
   const [qrDataUrl, setQrDataUrl] = useState<string | null>(null);
@@ -407,7 +408,7 @@ function GiftCard({
 
   useEffect(() => {
     const next = defaultQuantityFor(gift, rsvpAdults, rsvpChildren);
-    if (next > 0) setQuotas(next);
+    if (next > 0) setQuotasStr(String(next));
   }, [rsvpAdults, rsvpChildren, gift.id, gift.available]);
 
   useEffect(() => {
@@ -542,11 +543,10 @@ function GiftCard({
               type="number"
               min={1}
               max={gift.available}
-              value={quotas}
-              onChange={(e) =>
-                setQuotas(
-                  Math.max(1, Math.min(gift.available, Number(e.target.value)))
-                )
+              value={quotasStr}
+              onChange={(e) => setQuotasStr(e.target.value)}
+              onBlur={() =>
+                setQuotasStr(String(Math.max(1, Math.min(gift.available, Number(quotasStr) || 1))))
               }
               className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2"
             />

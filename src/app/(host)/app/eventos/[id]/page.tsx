@@ -72,6 +72,10 @@ export default async function EventDetailPage({
     .single();
 
   const giftTitleById = new Map((gifts ?? []).map((g) => [g.id, g.title]));
+  const giftKindById = new Map((gifts ?? []).map((g) => [g.id, g.kind ?? 'gift']));
+  const buffetPurchases = (purchases ?? []).filter(
+    (p) => giftKindById.get(p.gift_item_id) === 'buffet' && p.status === 'paid'
+  );
 
   const initialSuggestions: Suggestion[] = Array.isArray(event.gift_suggestions)
     ? (event.gift_suggestions as Suggestion[])
@@ -968,6 +972,97 @@ export default async function EventDetailPage({
 
       {/* Scanner de entrada */}
       <ScannerSection eventId={eventId} />
+
+      {/* Lista de convidados */}
+      <section className="rounded-lg border border-gray-200 bg-white p-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="font-semibold">Lista de convidados</h2>
+            <p className="mt-0.5 text-sm text-gray-500">
+              {rsvps?.length ?? 0} confirmado(s) · {checkedInCount} check-in(s)
+            </p>
+          </div>
+        </div>
+        {!rsvps || rsvps.length === 0 ? (
+          <p className="mt-4 text-sm text-gray-500">Nenhum convidado confirmou presença ainda.</p>
+        ) : (
+          <div className="mt-4 overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-gray-100 text-left text-xs uppercase text-gray-500">
+                  <th className="pb-2 pr-4 font-medium">Nome</th>
+                  <th className="pb-2 pr-4 font-medium">Adultos</th>
+                  <th className="pb-2 pr-4 font-medium">Crianças</th>
+                  <th className="pb-2 pr-4 font-medium">Check-in</th>
+                  <th className="pb-2 font-medium">Confirmou em</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-50">
+                {rsvps.map((r) => (
+                  <tr key={r.id}>
+                    <td className="py-2 pr-4 font-medium text-gray-900">{r.guest_name}</td>
+                    <td className="py-2 pr-4 text-gray-600">{r.adults}</td>
+                    <td className="py-2 pr-4 text-gray-600">{r.children}</td>
+                    <td className="py-2 pr-4">
+                      {r.checked_in_at ? (
+                        <span className="rounded-full bg-green-100 px-2 py-0.5 text-[11px] font-semibold text-green-700">
+                          ✓ {new Date(r.checked_in_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+                        </span>
+                      ) : (
+                        <span className="text-gray-400">—</span>
+                      )}
+                    </td>
+                    <td className="py-2 text-xs text-gray-400">
+                      {new Date(r.created_at).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </section>
+
+      {/* Lista de pagamentos buffet / contribuição */}
+      {buffetPurchases.length > 0 && (
+        <section className="rounded-lg border border-gray-200 bg-white p-6">
+          <div>
+            <h2 className="font-semibold">Pagamentos de buffet / contribuição</h2>
+            <p className="mt-0.5 text-sm text-gray-500">
+              {buffetPurchases.length} pagamento(s) confirmado(s) ·{' '}
+              {formatBRL(buffetPurchases.reduce((s, p) => s + p.amount_cents, 0))} total
+            </p>
+          </div>
+          <div className="mt-4 overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-gray-100 text-left text-xs uppercase text-gray-500">
+                  <th className="pb-2 pr-4 font-medium">Nome</th>
+                  <th className="pb-2 pr-4 font-medium">Item</th>
+                  <th className="pb-2 pr-4 font-medium">Qtd</th>
+                  <th className="pb-2 pr-4 font-medium">Valor</th>
+                  <th className="pb-2 font-medium">Pago em</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-50">
+                {buffetPurchases.map((p) => (
+                  <tr key={p.id}>
+                    <td className="py-2 pr-4 font-medium text-gray-900">{p.buyer_name}</td>
+                    <td className="py-2 pr-4 text-gray-600">{giftTitleById.get(p.gift_item_id) ?? '—'}</td>
+                    <td className="py-2 pr-4 text-gray-600">{p.quotas}</td>
+                    <td className="py-2 pr-4 font-medium text-green-700">{formatBRL(p.amount_cents)}</td>
+                    <td className="py-2 text-xs text-gray-400">
+                      {p.paid_at
+                        ? new Date(p.paid_at).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })
+                        : '—'}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      )}
 
       {/* Danger zone — excluir evento */}
       <section className="rounded-lg border border-gray-200 bg-white p-6">
