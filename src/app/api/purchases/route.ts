@@ -3,6 +3,13 @@ import { createClient, createAdminClient } from '@/lib/supabase/server';
 import { getPaymentProvider } from '@/lib/payments';
 import { purchaseSchema } from '@/lib/validation/schemas';
 
+// Campo 26 do EMV Pix tem limite de 99 chars. baseLength = GUI(18) + tag01(2+2+pixKey.length) + tag02(4).
+function buildPixDescription(pixKey: string, rawDescription: string): string {
+  const baseLength = 18 + 2 + 2 + pixKey.length;
+  const maxDescriptionLength = Math.max(0, 99 - baseLength - 4);
+  return rawDescription.slice(0, maxDescriptionLength);
+}
+
 /**
  * POST /api/purchases
  * Convidado (anônimo) cria uma reserva de cotas e recebe o Pix copia-e-cola.
@@ -69,6 +76,8 @@ export async function POST(request: Request) {
 
   // 2. Gera um txid candidato (25 chars) e monta o Pix estático
   const candidateTxid = crypto.randomUUID().replace(/-/g, '').slice(0, 25);
+  const rawDescription = `${event.title} - ${gift.title}`;
+  const description = buildPixDescription(owner.pix_key, rawDescription);
   const provider = getPaymentProvider();
   const { pixPayload, pixTxid, expiresAt } = await provider.createCharge({
     amountCents: gift.quota_value_cents * input.quotas,
@@ -78,7 +87,7 @@ export async function POST(request: Request) {
       email: input.buyer_email || null,
       phone: input.buyer_phone || null
     },
-    description: `${event.title} — ${gift.title}`,
+    description,
     receiver: {
       pixKey: owner.pix_key,
       merchantName: owner.full_name ?? 'ANFITRIAO',
