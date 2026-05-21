@@ -42,3 +42,7 @@ next-env.d.ts
 
 # scripts locais (helper de upgrade, não versionar)
 /upgrade-e-testar.bat
+
+# Worktrees temporários de agentes (Claude Code, Antigravity, etc)
+# Nunca versionar — são links pra branches/worktrees criados localmente
+/.claude/

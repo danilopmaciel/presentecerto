@@ -73,6 +73,7 @@ export default async function EventDetailPage({
 
   const giftTitleById = new Map((gifts ?? []).map((g) => [g.id, g.title]));
   const giftKindById = new Map((gifts ?? []).map((g) => [g.id, g.kind ?? 'gift']));
+  const buffetItems = (gifts ?? []).filter((g) => g.kind === 'buffet');
   const buffetPurchases = (purchases ?? []).filter(
     (p) => giftKindById.get(p.gift_item_id) === 'buffet' && p.status === 'paid'
   );

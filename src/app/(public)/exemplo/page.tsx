@@ -4,11 +4,11 @@ import { DemoEventPreview } from './DemoEventPreview';
 export const dynamic = 'force-static';
 
 const DEMO_EVENT = {
-  title: 'Aniversário do Theo — 3 anos',
+  title: 'Aniversário da Sofia — 5 anos 🎉',
   description:
-    'Vem comemorar essa data especial com a gente! Vai ter pista de carrinhos, bolo de chocolate e muita brincadeira. Use o link pra confirmar presença e, se quiser, ajudar com um dos presentes em cotas.',
-  starts_at_label: '15 de junho de 2026, sábado, 15:00',
-  location_text: 'Buffet Pequeno Príncipe — São Paulo, SP'
+    'Página de demonstração do PresenteCerto. Crie a sua igualzinha em minutos: monta a lista de presentes em cotas de Pix, escolhe um dos 12 temas ou personaliza com sua foto, e compartilha um link bonito no grupo do WhatsApp.',
+  starts_at_label: 'Sábado, 14:00 — data e local ilustrativos',
+  location_text: 'Buffet exemplo · cidade exemplo'
 };
 
 // SVGs inline em data: URI — não dependem de CDN externa, sempre renderizam.
@@ -315,13 +315,13 @@ export default function ExamplePage() {
             <MockCard
               title="Compartilhar e divulgar"
               icon="🔗"
-              body="Um link público bonito tipo presentecerto.app/e/aniversario-do-theo. Manda no grupo do WhatsApp e pronto."
+              body="Um link público bonito tipo presentecerto.app/e/aniv-sofia-5. Manda no grupo do WhatsApp e pronto."
               previewBg="from-amber-50 to-white"
             >
               <div className="space-y-2">
                 <div className="flex items-center gap-2 rounded-md border border-gray-200 bg-white p-2">
                   <div className="flex-1 truncate font-mono text-[11px] text-gray-600">
-                    presentecerto.app/e/aniv-theo-3
+                    presentecerto.app/e/aniv-sofia-5
                   </div>
                   <span className="rounded bg-brand-500 px-2 py-1 text-[10px] font-medium text-white">
                     Copiar
