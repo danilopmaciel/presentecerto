@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { Suspense, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { normalizePixKey, describePixKey } from '@/lib/pix-key';
@@ -47,6 +47,32 @@ function saveDraft(d: Draft) {
 }
 
 export default function CriarPage() {
+  // Suspense é exigido pelo Next 15+ pra qualquer client component que use
+  // useSearchParams() — senão o build prerender falha.
+  return (
+    <Suspense fallback={<LoadingShell />}>
+      <CriarPageInner />
+    </Suspense>
+  );
+}
+
+function LoadingShell() {
+  return (
+    <main className="min-h-screen bg-gradient-to-b from-brand-50 to-white">
+      <div className="mx-auto max-w-3xl px-4 py-10 sm:px-6">
+        <div className="h-8 w-48 animate-pulse rounded bg-gray-200" />
+        <div className="mt-4 h-4 w-72 animate-pulse rounded bg-gray-200" />
+        <div className="mt-8 space-y-4">
+          {[1, 2, 3, 4].map((i) => (
+            <div key={i} className="h-12 animate-pulse rounded-md bg-gray-100" />
+          ))}
+        </div>
+      </div>
+    </main>
+  );
+}
+
+function CriarPageInner() {
   const router = useRouter();
   const search = useSearchParams();
   const queryPlan = search.get('plan') === 'themed' ? 'themed' : 'basic';
