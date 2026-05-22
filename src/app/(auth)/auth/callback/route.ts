@@ -1,10 +1,19 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 
+function safeNext(raw: string | null): string {
+  // Aceita só paths relativos da própria app (evita open redirect)
+  if (!raw) return '/app';
+  if (!raw.startsWith('/')) return '/app';
+  if (raw.startsWith('//')) return '/app'; // protocol-relative
+  if (raw.startsWith('/\\')) return '/app';
+  return raw;
+}
+
 export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url);
   const code = searchParams.get('code');
-  const next = searchParams.get('next') ?? '/app';
+  const next = safeNext(searchParams.get('next'));
 
   // Provedor OAuth pode devolver erro direto na URL (ex.: usuário negou permissão)
   const oauthError = searchParams.get('error');

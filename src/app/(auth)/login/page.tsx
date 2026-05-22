@@ -37,6 +37,23 @@ export default function LoginPage() {
     }
   }, []);
 
+  // `next` é o destino após login bem-sucedido. Whitelist pra evitar open redirect.
+  function getNextParam(): string {
+    if (typeof window === 'undefined') return '/app';
+    const next = new URLSearchParams(window.location.search).get('next');
+    if (!next) return '/app';
+    // Aceita só paths relativos da própria app
+    if (next.startsWith('/') && !next.startsWith('//')) return next;
+    return '/app';
+  }
+
+  function buildCallbackUrl(): string {
+    const next = getNextParam();
+    const url = new URL('/auth/callback', window.location.origin);
+    if (next !== '/app') url.searchParams.set('next', next);
+    return url.toString();
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setStatus('loading');
@@ -45,7 +62,7 @@ export default function LoginPage() {
     const { error } = await supabase.auth.signInWithOtp({
       email,
       options: {
-        emailRedirectTo: `${window.location.origin}/auth/callback`
+        emailRedirectTo: buildCallbackUrl()
       }
     });
     if (error) {
@@ -63,7 +80,7 @@ export default function LoginPage() {
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
-        redirectTo: `${window.location.origin}/auth/callback`
+        redirectTo: buildCallbackUrl()
       }
     });
     if (error) {

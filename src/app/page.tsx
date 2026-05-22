@@ -20,7 +20,7 @@ export default async function LandingPage() {
                 Entrar
               </Link>
               <Link
-                href="/login?create=1"
+                href="/criar"
                 className="rounded-md bg-brand-500 px-3 py-2 text-white hover:bg-brand-600"
               >
                 Criar meu evento
@@ -95,7 +95,7 @@ export default async function LandingPage() {
 
             <div className="mt-8">
               <Link
-                href="/login?create=1&plan=basic"
+                href="/criar?plan=basic"
                 className="block rounded-md border border-brand-300 bg-white px-6 py-3 text-center font-medium text-brand-700 hover:bg-brand-50"
               >
                 Criar evento Básico
@@ -145,7 +145,7 @@ export default async function LandingPage() {
 
             <div className="mt-8">
               <Link
-                href="/login?create=1&plan=themed"
+                href="/criar?plan=themed"
                 className="block rounded-md bg-brand-500 px-6 py-3 text-center font-medium text-white shadow hover:bg-brand-600"
               >
                 Criar evento Temático

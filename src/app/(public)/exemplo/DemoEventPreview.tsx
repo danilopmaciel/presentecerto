@@ -408,7 +408,7 @@ function DemoModal({
         <div className="mt-3">{children}</div>
         <div className="mt-4 flex flex-col items-center gap-2 border-t border-gray-100 pt-4">
           <a
-            href="/login?create=1&plan=themed"
+            href="/criar?plan=themed"
             className="block w-full rounded-md bg-brand-500 px-4 py-2.5 text-center text-sm font-medium text-white shadow hover:bg-brand-600"
           >
             Quero o meu evento assim →

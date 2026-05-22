@@ -91,7 +91,7 @@ export default function ExamplePage() {
           </div>
           <div className="flex shrink-0 gap-2">
             <Link
-              href="/login?create=1"
+              href="/criar"
               className="rounded-md bg-brand-500 px-3 py-1.5 text-xs font-semibold text-white shadow hover:bg-brand-600"
             >
               Criar o meu →
@@ -182,13 +182,13 @@ export default function ExamplePage() {
         </p>
         <div className="mt-4 flex flex-col items-center justify-center gap-3 sm:flex-row">
           <Link
-            href="/login?create=1&plan=basic"
+            href="/criar?plan=basic"
             className="rounded-md border border-brand-300 bg-white px-5 py-2.5 text-sm font-medium text-brand-700 hover:bg-brand-50"
           >
             Criar Básico — R$ 20
           </Link>
           <Link
-            href="/login?create=1&plan=themed"
+            href="/criar?plan=themed"
             className="rounded-md bg-brand-500 px-5 py-2.5 text-sm font-medium text-white shadow hover:bg-brand-600"
           >
             Criar Temático — R$ 50
@@ -337,7 +337,7 @@ export default function ExamplePage() {
 
           <div className="mt-10 text-center">
             <Link
-              href="/login?create=1"
+              href="/criar"
               className="inline-block rounded-md bg-brand-500 px-6 py-3 font-medium text-white shadow hover:bg-brand-600"
             >
               Criar meu evento agora →
@@ -359,13 +359,13 @@ export default function ExamplePage() {
           </p>
           <div className="mt-6 flex flex-col items-center justify-center gap-3 sm:flex-row">
             <Link
-              href="/login?create=1&plan=basic"
+              href="/criar?plan=basic"
               className="rounded-md border border-brand-300 bg-white px-6 py-3 font-medium text-brand-700 hover:bg-brand-50"
             >
               Criar Básico — R$ 20
             </Link>
             <Link
-              href="/login?create=1&plan=themed"
+              href="/criar?plan=themed"
               className="rounded-md bg-brand-500 px-6 py-3 font-medium text-white shadow hover:bg-brand-600"
             >
               Criar Temático — R$ 50
