@@ -99,11 +99,21 @@ export default async function EventDetailPage({
     const description = String(formData.get('description') ?? '').trim();
     const image_path = String(formData.get('image_path') ?? '').trim();
     const rawKind = String(formData.get('kind') ?? 'gift');
-    const kind = rawKind === 'buffet' ? 'buffet' : 'gift';
+    let kind: 'gift' | 'buffet' = rawKind === 'buffet' ? 'buffet' : 'gift';
     const quota_value_cents = Math.round(Number(formData.get('quota_value') ?? 0) * 100);
     const quota_total = Number(formData.get('quota_total') ?? 1);
 
     if (!title || quota_value_cents <= 0 || quota_total <= 0) return;
+
+    // Buffet/contribuição é feature do plano Temático — força para 'gift' no Básico
+    if (kind === 'buffet') {
+      const { data: ev } = await supabase
+        .from('events')
+        .select('plan_tier')
+        .eq('id', eventId)
+        .single();
+      if (ev?.plan_tier !== 'themed') kind = 'gift';
+    }
 
     await supabase.from('gift_items').insert({
       event_id: eventId,
@@ -146,10 +156,20 @@ export default async function EventDetailPage({
     const description = String(formData.get('description') ?? '').trim();
     const image_path = String(formData.get('image_path') ?? '').trim();
     const rawKind = String(formData.get('kind') ?? 'gift');
-    const kind = rawKind === 'buffet' ? 'buffet' : 'gift';
+    let kind: 'gift' | 'buffet' = rawKind === 'buffet' ? 'buffet' : 'gift';
     const quota_value_cents = Math.round(Number(formData.get('quota_value') ?? 0) * 100);
     const quota_total = Number(formData.get('quota_total') ?? 1);
     if (!title || quota_value_cents <= 0 || quota_total <= 0) return;
+
+    // Buffet/contribuição é feature do plano Temático — força para 'gift' no Básico
+    if (kind === 'buffet') {
+      const { data: ev } = await supabase
+        .from('events')
+        .select('plan_tier')
+        .eq('id', eventId)
+        .single();
+      if (ev?.plan_tier !== 'themed') kind = 'gift';
+    }
 
     // Não permite reduzir o total abaixo do que já foi vendido
     const { data: sales } = await supabase
@@ -177,6 +197,15 @@ export default async function EventDetailPage({
   async function updateBuffetSettings(formData: FormData) {
     'use server';
     const supabase = await createClient();
+
+    // Buffet é só do plano Temático — Básico nem pode tocar nessas configs
+    const { data: ev } = await supabase
+      .from('events')
+      .select('plan_tier')
+      .eq('id', eventId)
+      .single();
+    if (ev?.plan_tier !== 'themed') return;
+
     const enable_buffet = formData.get('enable_buffet') === 'on';
     const buffet_title = String(formData.get('buffet_title') ?? 'Buffet').trim();
     const buffet_description = String(formData.get('buffet_description') ?? '').trim();
@@ -694,7 +723,8 @@ export default async function EventDetailPage({
         </section>
       )}
 
-      {/* Configurações de Buffet */}
+      {/* Configurações de Buffet — só no plano Temático */}
+      {event.plan_tier === 'themed' && (
         <section className="rounded-xl border border-gray-200 bg-gray-50 p-6 shadow-sm">
           <div className="flex items-center justify-between">
             <div>
@@ -756,6 +786,7 @@ export default async function EventDetailPage({
           </button>
         </form>
       </section>
+      )}
 
       {/* Modo teste — pular pagamento (gated por NEXT_PUBLIC_TEST_MODE=true) */}
       {testMode && !isPublished && (
@@ -881,6 +912,7 @@ export default async function EventDetailPage({
                 onDelete={deleteGift}
                 eventId={eventId}
                 enableAi={aiEnabled && event.plan_tier === 'themed'}
+                enableBuffet={event.plan_tier === 'themed'}
               />
             );
           })}
@@ -891,6 +923,7 @@ export default async function EventDetailPage({
             onAdd={addGift}
             eventId={eventId}
             enableAi={aiEnabled && event.plan_tier === 'themed'}
+            enableBuffet={event.plan_tier === 'themed'}
           />
         </div>
       </section>

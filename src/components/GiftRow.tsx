@@ -24,7 +24,8 @@ export function GiftRow({
   onUpdate,
   onDelete,
   eventId,
-  enableAi = false
+  enableAi = false,
+  enableBuffet = false
 }: {
   gift: GiftRowData;
   sold: number;
@@ -32,12 +33,15 @@ export function GiftRow({
   onDelete: Delete;
   eventId?: string;
   enableAi?: boolean;
+  enableBuffet?: boolean;
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [editing, setEditing] = useState(false);
   const [confirmDel, setConfirmDel] = useState(false);
   const [imageUrl, setImageUrl] = useState(gift.image_path ?? '');
+  // Se o plano é Básico mas o item já existia como buffet (legado), mantém o kind
+  // pra não quebrar dados. Só esconde o seletor de tipo no UI.
   const [kind, setKind] = useState<'gift' | 'buffet'>(gift.kind ?? 'gift');
   const [error, setError] = useState<string | null>(null);
   const isBuffet = kind === 'buffet';
@@ -83,32 +87,35 @@ export function GiftRow({
           Editando {isBuffet ? 'item de buffet' : 'presente'}
         </div>
 
-        <div className="grid grid-cols-2 gap-2">
-          <button
-            type="button"
-            onClick={() => setKind('gift')}
-            className={`flex items-center gap-2 rounded-md border-2 px-3 py-2 text-left text-xs ${
-              !isBuffet
-                ? 'border-brand-500 bg-brand-50 text-brand-800'
-                : 'border-gray-200 bg-white text-gray-600 hover:border-gray-300'
-            }`}
-          >
-            <span className="text-base">🎁</span>
-            <span className="font-medium">Presente</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => setKind('buffet')}
-            className={`flex items-center gap-2 rounded-md border-2 px-3 py-2 text-left text-xs ${
-              isBuffet
-                ? 'border-brand-500 bg-brand-50 text-brand-800'
-                : 'border-gray-200 bg-white text-gray-600 hover:border-gray-300'
-            }`}
-          >
-            <span className="text-base">🍽️</span>
-            <span className="font-medium">Buffet</span>
-          </button>
-        </div>
+        {/* Seletor de tipo — só no plano Temático */}
+        {enableBuffet && (
+          <div className="grid grid-cols-2 gap-2">
+            <button
+              type="button"
+              onClick={() => setKind('gift')}
+              className={`flex items-center gap-2 rounded-md border-2 px-3 py-2 text-left text-xs ${
+                !isBuffet
+                  ? 'border-brand-500 bg-brand-50 text-brand-800'
+                  : 'border-gray-200 bg-white text-gray-600 hover:border-gray-300'
+              }`}
+            >
+              <span className="text-base">🎁</span>
+              <span className="font-medium">Presente</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setKind('buffet')}
+              className={`flex items-center gap-2 rounded-md border-2 px-3 py-2 text-left text-xs ${
+                isBuffet
+                  ? 'border-brand-500 bg-brand-50 text-brand-800'
+                  : 'border-gray-200 bg-white text-gray-600 hover:border-gray-300'
+              }`}
+            >
+              <span className="text-base">🍽️</span>
+              <span className="font-medium">Buffet</span>
+            </button>
+          </div>
+        )}
 
         <input
           name="title"

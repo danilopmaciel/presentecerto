@@ -4,6 +4,8 @@ import { Suspense, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { normalizePixKey, describePixKey } from '@/lib/pix-key';
+import { createClient } from '@/lib/supabase/client';
+import { finalizeDraft } from './actions';
 
 const DRAFT_KEY = 'pc_draft_v1';
 
@@ -72,6 +74,9 @@ function LoadingShell() {
   );
 }
 
+type AuthStatus = 'idle' | 'google-loading' | 'email-loading' | 'email-sent';
+type SubmitStage = 'idle' | 'submitting' | 'error';
+
 function CriarPageInner() {
   const router = useRouter();
   const search = useSearchParams();
@@ -80,12 +85,55 @@ function CriarPageInner() {
   const [draft, setDraft] = useState<Draft>(emptyDraft);
   const [loaded, setLoaded] = useState(false);
 
-  // Carrega rascunho do localStorage no primeiro mount
+  // Estado de autenticação
+  const [authChecking, setAuthChecking] = useState(true);
+  const [userId, setUserId] = useState<string | null>(null);
+  const [userEmail, setUserEmail] = useState<string | null>(null);
+  const [profileFullName, setProfileFullName] = useState('');
+  const [profilePhone, setProfilePhone] = useState('');
+  const [profileComplete, setProfileComplete] = useState(false);
+
+  // Estado dos fluxos secundários
+  const [submitStage, setSubmitStage] = useState<SubmitStage>('idle');
+  const [submitError, setSubmitError] = useState<string | null>(null);
+  const [authStatus, setAuthStatus] = useState<AuthStatus>('idle');
+  const [authEmail, setAuthEmail] = useState('');
+  const [authError, setAuthError] = useState<string | null>(null);
+
+  // Carrega rascunho do localStorage e estado de auth no mount
   useEffect(() => {
-    const loaded = loadDraft();
-    // Se a URL trouxe um plan, ela vence
-    setDraft({ ...loaded, plan_tier: queryPlan });
+    const stored = loadDraft();
+    setDraft({ ...stored, plan_tier: queryPlan });
     setLoaded(true);
+
+    (async () => {
+      const supabase = createClient();
+      const {
+        data: { user }
+      } = await supabase.auth.getUser();
+      if (!user) {
+        setUserId(null);
+        setAuthChecking(false);
+        return;
+      }
+      setUserId(user.id);
+      setUserEmail(user.email ?? null);
+
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('full_name, phone')
+        .eq('id', user.id)
+        .single();
+
+      const fullName = profile?.full_name ?? '';
+      const phone = profile?.phone ?? '';
+      setProfileFullName(fullName);
+      setProfilePhone(phone);
+      const hasName = fullName.trim().length >= 2;
+      const hasPhone = phone.replace(/\D/g, '').length >= 10;
+      setProfileComplete(hasName && hasPhone);
+      setAuthChecking(false);
+    })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -99,14 +147,115 @@ function CriarPageInner() {
     setDraft((d) => ({ ...d, [key]: value }));
   }
 
-  function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+  function formIsValid() {
+    return !!draft.title.trim() && !!draft.starts_at && !!draft.pix_key.trim();
+  }
+
+  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
+    if (!formIsValid()) return;
+
     // Normaliza Pix antes de salvar
     const normalized = normalizePixKey(draft.pix_key);
     const finalDraft = { ...draft, pix_key: normalized };
+    setDraft(finalDraft);
     saveDraft(finalDraft);
-    // Redireciona pro login — depois do login, /criar/finalizar pega o rascunho
-    router.push('/login?next=/criar/finalizar');
+
+    if (authChecking) return; // aguarda a checagem de auth concluir
+
+    // Não logada/o → rola pra seção de login inline
+    if (!userId) {
+      requestAnimationFrame(() => {
+        document
+          .getElementById('inline-auth')
+          ?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      });
+      return;
+    }
+
+    // Logada/o sem nome/telefone → rola pra seção de cadastro
+    if (!profileComplete) {
+      requestAnimationFrame(() => {
+        document
+          .getElementById('inline-profile')
+          ?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      });
+      return;
+    }
+
+    // Tudo certo → finaliza
+    await finalize(finalDraft, profileFullName, profilePhone);
+  }
+
+  async function finalize(d: Draft, fullName: string, phone: string) {
+    setSubmitStage('submitting');
+    setSubmitError(null);
+    const res = await finalizeDraft({
+      ...d,
+      full_name: fullName,
+      phone
+    });
+    if ('error' in res) {
+      setSubmitError(res.error ?? 'Erro desconhecido ao criar evento.');
+      setSubmitStage('error');
+      return;
+    }
+    try {
+      localStorage.removeItem(DRAFT_KEY);
+    } catch {
+      /* ignore */
+    }
+    router.replace(`/app/eventos/${res.event_id}`);
+  }
+
+  async function handleGoogleLogin() {
+    setAuthStatus('google-loading');
+    setAuthError(null);
+    const supabase = createClient();
+    const callback = new URL('/auth/callback', window.location.origin);
+    callback.searchParams.set('next', '/criar');
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: { redirectTo: callback.toString() }
+    });
+    if (error) {
+      setAuthError(error.message);
+      setAuthStatus('idle');
+    }
+    // sucesso → o navegador é redirecionado pro Google
+  }
+
+  async function handleMagicLink(e: React.FormEvent) {
+    e.preventDefault();
+    setAuthStatus('email-loading');
+    setAuthError(null);
+    const supabase = createClient();
+    const callback = new URL('/auth/callback', window.location.origin);
+    callback.searchParams.set('next', '/criar');
+    const { error } = await supabase.auth.signInWithOtp({
+      email: authEmail,
+      options: { emailRedirectTo: callback.toString() }
+    });
+    if (error) {
+      setAuthError(error.message);
+      setAuthStatus('idle');
+    } else {
+      setAuthStatus('email-sent');
+    }
+  }
+
+  function handleProfileSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!profileFullName.trim() || profileFullName.trim().length < 2) {
+      setSubmitError('Informe seu nome completo.');
+      return;
+    }
+    if (profilePhone.replace(/\D/g, '').length < 10) {
+      setSubmitError('Informe um telefone válido com DDD.');
+      return;
+    }
+    setSubmitError(null);
+    finalize(draft, profileFullName.trim(), profilePhone.trim());
   }
 
   function discardDraft() {
@@ -126,15 +275,27 @@ function CriarPageInner() {
     !!draft.location_text.trim() ||
     !!draft.pix_key.trim();
 
+  // Texto do botão muda conforme o stage do usuário
+  let ctaLabel = 'Continuar →';
+  if (submitStage === 'submitting') ctaLabel = 'Criando evento...';
+  else if (!authChecking && userId && profileComplete) ctaLabel = 'Criar meu evento →';
+
   return (
     <main className="min-h-screen bg-gradient-to-b from-brand-50 to-white pb-16">
       <header className="mx-auto flex max-w-3xl items-center justify-between px-4 py-4 sm:px-6">
         <Link href="/" className="text-lg font-bold text-brand-700">
           PresenteCerto
         </Link>
-        <Link href="/login" className="text-sm text-gray-600 hover:underline">
-          Já tenho conta · Entrar
-        </Link>
+        {!userId && !authChecking && (
+          <Link href="/login" className="text-sm text-gray-600 hover:underline">
+            Já tenho conta · Entrar
+          </Link>
+        )}
+        {userId && (
+          <Link href="/app" className="text-sm text-gray-600 hover:underline">
+            Meu painel
+          </Link>
+        )}
       </header>
 
       <div className="mx-auto max-w-3xl px-4 sm:px-6">
@@ -143,11 +304,14 @@ function CriarPageInner() {
             <span className="text-xl">✨</span>
             <div>
               <div className="font-semibold text-gray-900">
-                Monte seu evento sem precisar criar conta
+                {userId
+                  ? `Bem-vinda/o de volta${userEmail ? `, ${userEmail}` : ''}`
+                  : 'Monte seu evento sem precisar criar conta'}
               </div>
               <p className="mt-1 text-gray-600">
-                Preenche aqui sem compromisso — o login só é pedido na hora de publicar pros
-                convidados. O rascunho fica salvo no seu navegador.
+                {userId
+                  ? 'Termine de preencher e publique seu evento — vai direto pro seu painel.'
+                  : 'Preenche aqui sem compromisso — o login só é pedido na hora de publicar pros convidados. O rascunho fica salvo no seu navegador.'}
               </p>
             </div>
           </div>
@@ -181,6 +345,7 @@ function CriarPageInner() {
                   'Tudo do Básico',
                   '12 temas com hero art',
                   'Personalização com sua imagem',
+                  'Buffet / contribuição por pessoa',
                   'IA pra gerar imagens'
                 ]}
                 highlight
@@ -268,19 +433,192 @@ function CriarPageInner() {
             </p>
           </Field>
 
-          {/* CTA */}
+          {/* Seção de auth inline — só aparece quando não tá logado */}
+          {!authChecking && !userId && (
+            <section
+              id="inline-auth"
+              className="rounded-xl border border-brand-200 bg-white p-5 shadow-sm"
+            >
+              <div className="flex items-start gap-3">
+                <span className="text-xl">🔐</span>
+                <div className="flex-1">
+                  <h2 className="font-semibold text-gray-900">
+                    Faça login pra publicar (1 minuto)
+                  </h2>
+                  <p className="mt-1 text-sm text-gray-600">
+                    Seu rascunho já está salvo. Só precisamos identificar você antes de criar a
+                    página do evento.
+                  </p>
+
+                  <button
+                    type="button"
+                    onClick={handleGoogleLogin}
+                    disabled={authStatus !== 'idle'}
+                    className="mt-4 flex w-full items-center justify-center gap-3 rounded-md border border-gray-300 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 disabled:opacity-60"
+                  >
+                    <svg
+                      className="h-5 w-5"
+                      viewBox="0 0 24 24"
+                      xmlns="http://www.w3.org/2000/svg"
+                    >
+                      <path
+                        fill="#4285F4"
+                        d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
+                      />
+                      <path
+                        fill="#34A853"
+                        d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
+                      />
+                      <path
+                        fill="#FBBC05"
+                        d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"
+                      />
+                      <path
+                        fill="#EA4335"
+                        d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
+                      />
+                    </svg>
+                    {authStatus === 'google-loading'
+                      ? 'Redirecionando...'
+                      : 'Entrar com Google'}
+                  </button>
+
+                  <div className="my-4 flex items-center gap-3">
+                    <div className="h-px flex-1 bg-gray-200" />
+                    <span className="text-[10px] uppercase tracking-wider text-gray-400">
+                      ou
+                    </span>
+                    <div className="h-px flex-1 bg-gray-200" />
+                  </div>
+
+                  <form onSubmit={handleMagicLink} className="space-y-2">
+                    <input
+                      type="email"
+                      required
+                      value={authEmail}
+                      onChange={(e) => setAuthEmail(e.target.value)}
+                      placeholder="seu@email.com"
+                      className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-brand-500 focus:outline-none"
+                    />
+                    <button
+                      type="submit"
+                      disabled={authStatus !== 'idle'}
+                      className="w-full rounded-md bg-brand-500 px-4 py-2 text-sm text-white hover:bg-brand-600 disabled:opacity-60"
+                    >
+                      {authStatus === 'email-loading'
+                        ? 'Enviando...'
+                        : 'Receber link por e-mail'}
+                    </button>
+                  </form>
+
+                  {authStatus === 'email-sent' && (
+                    <div className="mt-3 rounded-md border border-green-200 bg-green-50 p-3 text-xs text-green-800">
+                      Link enviado! Confira seu e-mail (pode ir pro spam). Volte aqui depois de
+                      clicar no link — o rascunho já está salvo.
+                    </div>
+                  )}
+                  {authError && (
+                    <div className="mt-3 rounded-md border border-red-200 bg-red-50 p-3 text-xs text-red-800">
+                      {authError}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </section>
+          )}
+
+          {/* Seção de cadastro inline — quando tá logado mas faltam dados */}
+          {!authChecking && userId && !profileComplete && (
+            <section
+              id="inline-profile"
+              className="rounded-xl border border-brand-200 bg-white p-5 shadow-sm"
+            >
+              <div className="flex items-start gap-3">
+                <span className="text-xl">📇</span>
+                <div className="flex-1">
+                  <h2 className="font-semibold text-gray-900">Última etapa: seu cadastro</h2>
+                  <p className="mt-1 text-sm text-gray-600">
+                    Pra criarmos seu evento precisamos do seu nome e telefone — usados só pra
+                    suporte e notificações de pagamento.
+                  </p>
+
+                  <div className="mt-4 space-y-3">
+                    <label className="block">
+                      <span className="mb-1 block text-xs font-medium uppercase tracking-wide text-gray-500">
+                        Nome completo
+                      </span>
+                      <input
+                        required
+                        value={profileFullName}
+                        onChange={(e) => setProfileFullName(e.target.value)}
+                        placeholder="Como você se apresenta"
+                        className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+                      />
+                    </label>
+
+                    <label className="block">
+                      <span className="mb-1 block text-xs font-medium uppercase tracking-wide text-gray-500">
+                        Telefone (WhatsApp)
+                      </span>
+                      <input
+                        required
+                        value={profilePhone}
+                        onChange={(e) => setProfilePhone(e.target.value)}
+                        placeholder="(11) 99999-9999"
+                        className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+                      />
+                    </label>
+
+                    <button
+                      type="button"
+                      onClick={handleProfileSubmit}
+                      disabled={submitStage === 'submitting'}
+                      className="w-full rounded-md bg-brand-500 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-600 disabled:opacity-60"
+                    >
+                      {submitStage === 'submitting'
+                        ? 'Criando evento...'
+                        : 'Criar meu evento →'}
+                    </button>
+                    {submitError && (
+                      <div className="rounded-md border border-red-200 bg-red-50 p-2 text-xs text-red-700">
+                        {submitError}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </section>
+          )}
+
+          {/* CTA fixa no rodapé */}
           <div className="sticky bottom-3 z-10 -mx-4 mt-8 rounded-xl bg-white/95 p-4 shadow-lg ring-1 ring-gray-200 backdrop-blur sm:mx-0">
             <button
               type="submit"
-              disabled={!draft.title.trim() || !draft.starts_at || !draft.pix_key.trim()}
+              disabled={!formIsValid() || submitStage === 'submitting'}
               className="block w-full rounded-md bg-brand-500 px-6 py-3 text-center font-semibold text-white shadow hover:bg-brand-600 disabled:opacity-50"
             >
-              Continuar →
+              {ctaLabel}
             </button>
-            <p className="mt-2 text-center text-[11px] text-gray-500">
-              Próximo passo: criar sua conta (1 minuto) pra adicionar presentes, escolher tema e
-              publicar o link.
-            </p>
+            {!authChecking && !userId && (
+              <p className="mt-2 text-center text-[11px] text-gray-500">
+                Próximo passo: login rápido (1 minuto) pra publicar pros convidados.
+              </p>
+            )}
+            {!authChecking && userId && !profileComplete && (
+              <p className="mt-2 text-center text-[11px] text-gray-500">
+                Próximo passo: completar nome e telefone (3 segundos).
+              </p>
+            )}
+            {!authChecking && userId && profileComplete && (
+              <p className="mt-2 text-center text-[11px] text-gray-500">
+                Após criar, você vai pro painel pra adicionar presentes e publicar.
+              </p>
+            )}
+            {submitStage === 'error' && submitError && (
+              <div className="mt-3 rounded-md border border-red-200 bg-red-50 p-2 text-center text-xs text-red-700">
+                {submitError}
+              </div>
+            )}
             {hasAnyContent && (
               <div className="mt-2 text-center">
                 <button

@@ -9,18 +9,21 @@ type AddGift = (formData: FormData) => Promise<void>;
 export function GiftAddForm({
   onAdd,
   eventId,
-  enableAi = false
+  enableAi = false,
+  enableBuffet = false
 }: {
   onAdd: AddGift;
   eventId?: string;
   enableAi?: boolean;
+  enableBuffet?: boolean;
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [imageUrl, setImageUrl] = useState('');
   const [kind, setKind] = useState<'gift' | 'buffet'>('gift');
 
-  const isBuffet = kind === 'buffet';
+  // Plano Básico não tem buffet — força tipo 'gift'
+  const isBuffet = enableBuffet && kind === 'buffet';
 
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -43,7 +46,8 @@ export function GiftAddForm({
     >
       <div className="text-sm font-medium">Adicionar item</div>
 
-      {/* Seletor de tipo */}
+      {/* Seletor de tipo — só faz sentido se buffet estiver habilitado (plano Temático) */}
+      {enableBuffet && (
       <div>
         <div className="text-xs font-medium uppercase tracking-wide text-gray-600">
           Tipo
@@ -91,6 +95,7 @@ export function GiftAddForm({
           </p>
         )}
       </div>
+      )}
 
       <input
         name="title"

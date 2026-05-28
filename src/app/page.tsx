@@ -41,10 +41,10 @@ export default async function LandingPage() {
         </p>
         <div className="mt-10 flex flex-col items-center justify-center gap-3 sm:flex-row">
           <Link
-            href="/e/teste-mdjz"
+            href="/criar"
             className="rounded-md bg-brand-500 px-6 py-3 text-white shadow hover:bg-brand-600"
           >
-            Ver exemplo de evento
+            Experimentar agora — grátis
           </Link>
           <Link
             href="#planos"
@@ -54,7 +54,8 @@ export default async function LandingPage() {
           </Link>
         </div>
         <p className="mt-3 text-xs text-gray-500">
-          Você monta o evento todo grátis. Só paga quando quiser publicar pros convidados.
+          Monta o evento sem precisar criar conta. O rascunho fica salvo no seu navegador — o
+          login só é pedido quando você decide publicar e pagar.
         </p>
       </section>
 
@@ -132,6 +133,10 @@ export default async function LandingPage() {
               <Feature>Padrões e decorações de fundo combinando com o tema</Feature>
               <Feature>
                 Cards dos presentes com cor de destaque e tipografia personalizada
+              </Feature>
+              <Feature>
+                <strong>Buffet / contribuição por pessoa</strong> — arrecade um valor fixo por
+                adulto/criança em paralelo aos presentes
               </Feature>
               <Feature>
                 Trocar o tema a qualquer momento — aplica em tempo real no link do evento
