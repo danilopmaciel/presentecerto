@@ -6,6 +6,15 @@ import { uniqueSlug } from '@/lib/utils';
 import { eventCreateSchema } from '@/lib/validation/schemas';
 import { normalizePixKey } from '@/lib/pix-key';
 
+type DraftGiftInput = {
+  id?: unknown;
+  title?: unknown;
+  description?: unknown;
+  kind?: unknown;
+  quota_value?: unknown;
+  quota_total?: unknown;
+};
+
 type DraftInput = {
   title?: unknown;
   description?: unknown;
@@ -16,6 +25,7 @@ type DraftInput = {
   pix_key?: unknown;
   full_name?: unknown;
   phone?: unknown;
+  gifts?: DraftGiftInput[];
 };
 
 /**
@@ -88,6 +98,35 @@ export async function finalizeDraft(input: DraftInput) {
     // eslint-disable-next-line no-console
     console.error('[finalizeDraft] insert event failed:', error);
     return { error: `Erro ao criar evento: ${error.message}` };
+  }
+
+  // Insere presentes do rascunho, se houver
+  const gifts = Array.isArray(input.gifts) ? input.gifts : [];
+  const planTier = parsed.data.plan_tier;
+  if (gifts.length > 0) {
+    const rows = gifts
+      .filter((g) => String(g.title ?? '').trim().length > 0)
+      .map((g, i) => {
+        const rawKind = String(g.kind ?? 'gift');
+        const kind: 'gift' | 'buffet' =
+          rawKind === 'buffet' && planTier === 'themed' ? 'buffet' : 'gift';
+        const quotaValue = Math.round(Number(g.quota_value ?? 0) * 100);
+        const quotaTotal = kind === 'buffet' ? 999999 : Math.max(1, Number(g.quota_total ?? 1));
+        return {
+          event_id: event.id,
+          title: String(g.title ?? '').trim().slice(0, 200),
+          description: String(g.description ?? '').trim() || null,
+          kind,
+          quota_value_cents: quotaValue,
+          quota_total: quotaTotal,
+          sort_order: i
+        };
+      })
+      .filter((r) => r.quota_value_cents > 0);
+
+    if (rows.length > 0) {
+      await supabase.from('gift_items').insert(rows);
+    }
   }
 
   return { event_id: event.id };

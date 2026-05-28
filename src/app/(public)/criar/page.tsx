@@ -1,6 +1,6 @@
 'use client';
 
-import { Suspense, useEffect, useState } from 'react';
+import React, { Suspense, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { normalizePixKey, describePixKey } from '@/lib/pix-key';
@@ -11,6 +11,15 @@ const DRAFT_KEY = 'pc_draft_v1';
 
 type DraftPlan = 'basic' | 'themed';
 
+type DraftGift = {
+  id: string;
+  title: string;
+  description: string;
+  kind: 'gift' | 'buffet';
+  quota_value: number; // BRL, not cents
+  quota_total: number;
+};
+
 type Draft = {
   title: string;
   description: string;
@@ -19,6 +28,7 @@ type Draft = {
   location_maps_url: string;
   plan_tier: DraftPlan;
   pix_key: string;
+  gifts: DraftGift[];
 };
 
 const emptyDraft: Draft = {
@@ -28,7 +38,8 @@ const emptyDraft: Draft = {
   location_text: '',
   location_maps_url: '',
   plan_tier: 'basic',
-  pix_key: ''
+  pix_key: '',
+  gifts: []
 };
 
 function loadDraft(): Draft {
@@ -37,10 +48,16 @@ function loadDraft(): Draft {
     const raw = localStorage.getItem(DRAFT_KEY);
     if (!raw) return emptyDraft;
     const parsed = JSON.parse(raw) as Partial<Draft>;
-    return { ...emptyDraft, ...parsed };
+    return { ...emptyDraft, ...parsed, gifts: Array.isArray(parsed.gifts) ? parsed.gifts : [] };
   } catch {
     return emptyDraft;
   }
+}
+
+function newGiftId() {
+  return typeof crypto !== 'undefined' && crypto.randomUUID
+    ? crypto.randomUUID()
+    : String(Date.now() + Math.random());
 }
 
 function saveDraft(d: Draft) {
@@ -193,7 +210,8 @@ function CriarPageInner() {
     const res = await finalizeDraft({
       ...d,
       full_name: fullName,
-      phone
+      phone,
+      gifts: d.gifts
     });
     if ('error' in res) {
       setSubmitError(res.error ?? 'Erro desconhecido ao criar evento.');
@@ -264,6 +282,14 @@ function CriarPageInner() {
     }
     localStorage.removeItem(DRAFT_KEY);
     setDraft({ ...emptyDraft, plan_tier: queryPlan });
+  }
+
+  function addGift(gift: Omit<DraftGift, 'id'>) {
+    setDraft((d) => ({ ...d, gifts: [...d.gifts, { ...gift, id: newGiftId() }] }));
+  }
+
+  function removeGift(id: string) {
+    setDraft((d) => ({ ...d, gifts: d.gifts.filter((g) => g.id !== id) }));
   }
 
   const pixKind = describePixKey(draft.pix_key);
@@ -432,6 +458,14 @@ function CriarPageInner() {
               Os presentes vão direto pra sua chave — o PresenteCerto não retém o valor.
             </p>
           </Field>
+
+          {/* Lista de presentes */}
+          <GiftSection
+            gifts={draft.gifts}
+            planTier={draft.plan_tier}
+            onAdd={addGift}
+            onRemove={removeGift}
+          />
 
           {/* Seção de auth inline — só aparece quando não tá logado */}
           {!authChecking && !userId && (
@@ -634,6 +668,171 @@ function CriarPageInner() {
         </form>
       </div>
     </main>
+  );
+}
+
+function GiftSection({
+  gifts,
+  planTier,
+  onAdd,
+  onRemove
+}: {
+  gifts: DraftGift[];
+  planTier: DraftPlan;
+  onAdd: (g: Omit<DraftGift, 'id'>) => void;
+  onRemove: (id: string) => void;
+}) {
+  const [title, setTitle] = React.useState('');
+  const [description, setDescription] = React.useState('');
+  const [kind, setKind] = React.useState<'gift' | 'buffet'>('gift');
+  const [quotaValue, setQuotaValue] = React.useState('');
+  const [quotaTotal, setQuotaTotal] = React.useState('10');
+  const [open, setOpen] = React.useState(false);
+
+  const isBuffet = planTier === 'themed' && kind === 'buffet';
+
+  function handleAdd(e: React.FormEvent) {
+    e.preventDefault();
+    const val = parseFloat(quotaValue);
+    const total = isBuffet ? 999999 : Math.max(1, parseInt(quotaTotal, 10) || 1);
+    if (!title.trim() || isNaN(val) || val <= 0) return;
+    onAdd({ title: title.trim(), description: description.trim(), kind, quota_value: val, quota_total: total });
+    setTitle('');
+    setDescription('');
+    setQuotaValue('');
+    setQuotaTotal('10');
+    setKind('gift');
+    setOpen(false);
+  }
+
+  return (
+    <fieldset className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
+      <legend className="px-2 text-sm font-medium text-gray-700">Lista de presentes</legend>
+
+      {gifts.length === 0 && !open && (
+        <p className="text-sm text-gray-500">
+          Nenhum presente adicionado ainda — você pode adicionar agora ou depois de criar o evento.
+        </p>
+      )}
+
+      {gifts.length > 0 && (
+        <ul className="mb-3 divide-y divide-gray-100">
+          {gifts.map((g) => (
+            <li key={g.id} className="flex items-center justify-between gap-3 py-2">
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-2">
+                  <span className="text-base">{g.kind === 'buffet' ? '🍽️' : '🎁'}</span>
+                  <span className="truncate text-sm font-medium text-gray-900">{g.title}</span>
+                </div>
+                <div className="mt-0.5 text-xs text-gray-500">
+                  {g.kind === 'buffet'
+                    ? `R$ ${g.quota_value.toFixed(2).replace('.', ',')} por pessoa`
+                    : `R$ ${g.quota_value.toFixed(2).replace('.', ',')} × ${g.quota_total} cota(s)`}
+                  {g.description ? ` · ${g.description}` : ''}
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => onRemove(g.id)}
+                className="shrink-0 text-xs text-red-500 hover:text-red-700"
+              >
+                Remover
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+
+      {open ? (
+        <form onSubmit={handleAdd} className="mt-2 space-y-3 rounded-md border border-dashed border-gray-300 p-3">
+          <div className="text-xs font-semibold uppercase tracking-wide text-gray-600">Novo item</div>
+
+          {planTier === 'themed' && (
+            <div className="grid grid-cols-2 gap-2">
+              {(['gift', 'buffet'] as const).map((k) => (
+                <button
+                  key={k}
+                  type="button"
+                  onClick={() => setKind(k)}
+                  className={`flex items-center gap-2 rounded-md border-2 px-3 py-2 text-left text-sm ${
+                    kind === k
+                      ? 'border-brand-500 bg-brand-50 text-brand-800'
+                      : 'border-gray-200 bg-white text-gray-600 hover:border-gray-300'
+                  }`}
+                >
+                  <span>{k === 'buffet' ? '🍽️' : '🎁'}</span>
+                  <span className="font-medium">{k === 'buffet' ? 'Buffet / Contribuição' : 'Presente'}</span>
+                </button>
+              ))}
+            </div>
+          )}
+
+          <input
+            required
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            placeholder={isBuffet ? 'Ex.: Buffet adulto' : 'Ex.: Triciclo'}
+            className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+          />
+          <input
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            placeholder="Descrição opcional"
+            className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+          />
+          <div className="grid grid-cols-2 gap-3">
+            <label className="block text-sm">
+              {isBuffet ? 'Valor por pessoa (R$)' : 'Valor da cota (R$)'}
+              <input
+                required
+                type="number"
+                step="0.01"
+                min="0.01"
+                value={quotaValue}
+                onChange={(e) => setQuotaValue(e.target.value)}
+                className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2"
+              />
+            </label>
+            {!isBuffet && (
+              <label className="block text-sm">
+                Nº de cotas
+                <input
+                  required
+                  type="number"
+                  min="1"
+                  value={quotaTotal}
+                  onChange={(e) => setQuotaTotal(e.target.value)}
+                  className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2"
+                />
+              </label>
+            )}
+          </div>
+          <div className="flex gap-2">
+            <button
+              type="submit"
+              className="rounded-md bg-brand-500 px-4 py-1.5 text-sm text-white hover:bg-brand-600"
+            >
+              Adicionar
+            </button>
+            <button
+              type="button"
+              onClick={() => setOpen(false)}
+              className="rounded-md border border-gray-300 px-4 py-1.5 text-sm text-gray-600 hover:bg-gray-50"
+            >
+              Cancelar
+            </button>
+          </div>
+        </form>
+      ) : (
+        <button
+          type="button"
+          onClick={() => setOpen(true)}
+          className="mt-2 text-sm text-brand-600 hover:underline"
+        >
+          + Adicionar presente
+        </button>
+      )}
+    </fieldset>
   );
 }
 

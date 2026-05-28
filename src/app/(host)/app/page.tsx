@@ -21,7 +21,7 @@ export default async function MyEventsPage() {
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">Meus eventos</h1>
         <Link
-          href="/app/eventos/novo"
+          href="/criar"
           className="rounded-md bg-brand-500 px-4 py-2 text-sm text-white hover:bg-brand-600"
         >
           + Novo evento
@@ -32,7 +32,7 @@ export default async function MyEventsPage() {
         {events?.length === 0 && (
           <div className="rounded-md border border-dashed border-gray-300 p-10 text-center text-gray-500">
             Você ainda não criou nenhum evento.{' '}
-            <Link href="/app/eventos/novo" className="text-brand-600 underline">
+            <Link href="/criar" className="text-brand-600 underline">
               Criar o primeiro
             </Link>
             .
