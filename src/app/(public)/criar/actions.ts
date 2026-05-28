@@ -15,6 +15,13 @@ type DraftGiftInput = {
   quota_total?: unknown;
 };
 
+type DraftSuggestionInput = {
+  id?: unknown;
+  emoji?: unknown;
+  label?: unknown;
+  color?: unknown;
+};
+
 type DraftInput = {
   title?: unknown;
   description?: unknown;
@@ -26,6 +33,7 @@ type DraftInput = {
   full_name?: unknown;
   phone?: unknown;
   gifts?: DraftGiftInput[];
+  suggestions?: DraftSuggestionInput[];
 };
 
 /**
@@ -126,6 +134,24 @@ export async function finalizeDraft(input: DraftInput) {
 
     if (rows.length > 0) {
       await supabase.from('gift_items').insert(rows);
+    }
+  }
+
+  // Salva sugestões de presente, se houver
+  const suggestions = Array.isArray(input.suggestions) ? input.suggestions : [];
+  if (suggestions.length > 0) {
+    const clean = suggestions
+      .filter((s) => typeof s.label === 'string' && String(s.label).trim().length > 0)
+      .slice(0, 30)
+      .map((s) => ({
+        id: String(s.id ?? crypto.randomUUID()),
+        label: String(s.label).slice(0, 80),
+        emoji: s.emoji ? String(s.emoji).slice(0, 8) : undefined,
+        color: s.color ? String(s.color).slice(0, 16) : undefined
+      }));
+
+    if (clean.length > 0) {
+      await supabase.from('events').update({ gift_suggestions: clean }).eq('id', event.id);
     }
   }
 
