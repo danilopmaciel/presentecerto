@@ -61,6 +61,7 @@ export function DraftPreview({
 }) {
   const [pixOpen, setPixOpen] = useState<{ giftTitle: string; amount: number } | null>(null);
   const [qrDataUrl, setQrDataUrl] = useState<string | null>(null);
+  const [aiInfoOpen, setAiInfoOpen] = useState(false);
 
   const isThemed = draft.plan_tier === 'themed';
   const theme = getTheme(isThemed ? draft.theme : 'default');
@@ -116,6 +117,22 @@ export function DraftPreview({
               <span className="text-[10px] text-gray-500">Clique pra trocar</span>
             </div>
             <div className="flex gap-2 overflow-x-auto pb-1">
+              {/* Card "Com IA" — bloqueado: disponível após login + plano Temático */}
+              <button
+                type="button"
+                onClick={() => setAiInfoOpen((v) => !v)}
+                className={`group relative shrink-0 overflow-hidden rounded-md border-2 transition ${
+                  aiInfoOpen ? 'border-purple-500 ring-2 ring-purple-200' : 'border-dashed border-purple-300 hover:border-purple-500'
+                }`}
+                title="Tema personalizado com IA — disponível após login"
+              >
+                <div className="relative flex h-12 w-20 items-center justify-center bg-gradient-to-br from-brand-100 via-purple-100 to-pink-100">
+                  <span className="text-2xl">✨</span>
+                  <span className="absolute right-0.5 top-0.5 text-[10px]">🔒</span>
+                </div>
+                <div className="bg-white px-1 py-0.5 text-[9px] font-medium text-purple-700">Com IA</div>
+              </button>
+
               {THEMES.map((t) => {
                 const selected = t.id === draft.theme;
                 return (
@@ -147,6 +164,24 @@ export function DraftPreview({
                 );
               })}
             </div>
+
+            {/* Aviso sobre IA / imagem própria */}
+            {aiInfoOpen ? (
+              <div className="mt-2 rounded-lg border border-purple-200 bg-purple-50 p-3 text-xs text-purple-900">
+                <div className="font-semibold">✨ Tema personalizado com IA</div>
+                <p className="mt-1 text-purple-800">
+                  Depois de criar sua conta e ativar o plano <strong>Temático (R$ 50)</strong>, você
+                  desbloqueia: gerar um fundo único só descrevendo a festa (ex.: <em>&quot;festa
+                  espacial com foguetes&quot;</em>), enviar sua própria imagem e a paleta de cores sai
+                  automática. Por aqui já dá pra escolher entre os <strong>12 temas prontos</strong> —
+                  o login só é pedido na hora de publicar.
+                </p>
+              </div>
+            ) : (
+              <p className="mt-1.5 text-[10px] text-gray-500">
+                🔒 <strong>Com IA</strong> e imagem própria: disponíveis após login + plano Temático. Toque pra saber mais.
+              </p>
+            )}
           </div>
         </div>
       )}
