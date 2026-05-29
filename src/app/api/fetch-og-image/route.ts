@@ -23,6 +23,49 @@ function pickMeta(html: string, ...names: string[]): string | null {
   return null;
 }
 
+/** Tenta extrair o preço em BRL a partir de meta tags e JSON-LD. */
+function pickPrice(html: string): number | null {
+  // 1. Meta tags padrão de e-commerce
+  const fromMeta = pickMeta(html, 'og:price:amount', 'product:price:amount', 'twitter:data1');
+  if (fromMeta) {
+    const n = parseFloat(fromMeta.replace(/[^\d,.]/g, '').replace(',', '.'));
+    if (!isNaN(n) && n > 0) return n;
+  }
+
+  // 2. JSON-LD: Product > offers > price
+  const ldBlocks = [...html.matchAll(/<script[^>]+type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi)];
+  for (const m of ldBlocks) {
+    try {
+      const data: unknown = JSON.parse(m[1]);
+      const items = Array.isArray(data) ? data : [data];
+      for (const item of items) {
+        if (!item || typeof item !== 'object') continue;
+        const obj = item as Record<string, unknown>;
+        if (obj['@type'] !== 'Product' || !obj.offers) continue;
+        const offers = Array.isArray(obj.offers) ? obj.offers[0] : obj.offers;
+        if (offers && typeof offers === 'object') {
+          const price = (offers as Record<string, unknown>).price;
+          const n = parseFloat(String(price ?? ''));
+          if (!isNaN(n) && n > 0) return n;
+        }
+      }
+    } catch { /* ignorar JSON inválido */ }
+  }
+
+  return null;
+}
+
+/** Extrai o título do produto limpando sufixos de loja. */
+function pickTitle(html: string): string | null {
+  const raw =
+    pickMeta(html, 'og:title', 'twitter:title') ??
+    html.match(/<title[^>]*>([^<]+)<\/title>/i)?.[1] ??
+    null;
+  if (!raw) return null;
+  // Remove sufixos comuns: " | Mercado Livre", " - Amazon.com.br", etc.
+  return raw.replace(/\s*[|–\-]\s*(Mercado Livre|Amazon\.com\.br|Americanas|Shopee|Magalu|Magazine Luiza)[^|–\-]*$/i, '').trim().slice(0, 200) || null;
+}
+
 function abs(url: string, base: string) {
   try {
     return new URL(url, base).toString();
@@ -99,7 +142,14 @@ export async function POST(req: Request) {
       );
     }
 
-    return NextResponse.json({ ok: true, image_url: abs(candidate, res.url) });
+    const price = pickPrice(html);
+    const title = pickTitle(html);
+    return NextResponse.json({
+      ok: true,
+      image_url: abs(candidate, res.url),
+      ...(price !== null && { price }),
+      ...(title && { title })
+    });
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : 'Erro ao buscar';
     return NextResponse.json({ ok: false, error: msg }, { status: 500 });

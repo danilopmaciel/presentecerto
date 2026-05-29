@@ -684,6 +684,10 @@ function GiftListSection({
       } else {
         setImageUrl(json.image_url);
         setFetchError(null);
+        // Pré-preenche título se o campo estiver vazio
+        if (json.title && !title.trim()) setTitle(json.title);
+        // Pré-preenche valor se o campo estiver vazio
+        if (json.price && !quotaValue) setQuotaValue(String(json.price));
       }
     } catch {
       setFetchError('Erro ao buscar a imagem.');
@@ -841,7 +845,12 @@ function GiftListSection({
                 </div>
                 <div className="min-w-0 flex-1 text-xs text-green-800">
                   <div className="font-semibold">✓ Imagem capturada</div>
-                  <div className="mt-0.5 break-all text-green-700 opacity-75">{imageUrl}</div>
+                  {(title || quotaValue) && (
+                    <div className="mt-1 space-y-0.5 text-green-700">
+                      {title && <div>🏷️ Título: <span className="font-medium">{title}</span></div>}
+                      {quotaValue && <div>💰 Valor: <span className="font-medium">R$ {quotaValue}</span></div>}
+                    </div>
+                  )}
                   <button
                     type="button"
                     onClick={() => { setImageUrl(''); setFetchError(null); }}
