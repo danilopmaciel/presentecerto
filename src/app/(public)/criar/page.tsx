@@ -6,6 +6,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { normalizePixKey, describePixKey } from '@/lib/pix-key';
 import { createClient } from '@/lib/supabase/client';
 import { finalizeDraft } from './actions';
+import { DraftPreview } from './DraftPreview';
 
 const DRAFT_KEY = 'pc_draft_v2';
 
@@ -36,6 +37,7 @@ type Draft = {
   location_maps_url: string;
   plan_tier: DraftPlan;
   pix_key: string;
+  theme: string;
   gifts: DraftGift[];
   suggestions: DraftSuggestion[];
 };
@@ -48,6 +50,7 @@ const emptyDraft: Draft = {
   location_maps_url: '',
   plan_tier: 'basic',
   pix_key: '',
+  theme: 'default',
   gifts: [],
   suggestions: []
 };
@@ -65,6 +68,7 @@ function loadDraft(): Draft {
     return {
       ...emptyDraft,
       ...parsed,
+      theme: parsed.theme ?? 'default',
       gifts: Array.isArray(parsed.gifts) ? parsed.gifts : [],
       suggestions: Array.isArray(parsed.suggestions) ? parsed.suggestions : []
     };
@@ -144,6 +148,7 @@ function CriarPageInner() {
   const [authStatus, setAuthStatus] = useState<AuthStatus>('idle');
   const [authEmail, setAuthEmail] = useState('');
   const [authError, setAuthError] = useState<string | null>(null);
+  const [previewOpen, setPreviewOpen] = useState(false);
 
   useEffect(() => {
     const stored = loadDraft();
@@ -217,7 +222,7 @@ function CriarPageInner() {
   async function finalize(d: Draft, fullName: string, phone: string) {
     setSubmitStage('submitting');
     setSubmitError(null);
-    const res = await finalizeDraft({ ...d, full_name: fullName, phone, gifts: d.gifts, suggestions: d.suggestions });
+    const res = await finalizeDraft({ ...d, full_name: fullName, phone, gifts: d.gifts, suggestions: d.suggestions, theme: d.theme });
     if ('error' in res) {
       setSubmitError(res.error ?? 'Erro desconhecido ao criar evento.');
       setSubmitStage('error');
@@ -352,6 +357,16 @@ function CriarPageInner() {
             </div>
           </div>
         </div>
+
+        {/* Botão de prévia — experiência completa da página pública */}
+        <button
+          type="button"
+          onClick={() => setPreviewOpen(true)}
+          className="flex w-full items-center justify-center gap-2 rounded-xl border-2 border-brand-300 bg-gradient-to-r from-brand-50 to-purple-50 px-4 py-3 text-sm font-semibold text-brand-700 shadow-sm transition hover:border-brand-400 hover:shadow"
+        >
+          👁 Pré-visualizar a página
+          {draft.plan_tier === 'themed' && <span className="font-normal text-gray-500">· experimente os 12 temas</span>}
+        </button>
 
         {/* ── Seção: Informações do evento ── */}
         <section id="section-info" className="rounded-lg border border-gray-200 bg-white p-6">
@@ -638,6 +653,15 @@ function CriarPageInner() {
           )}
         </div>
       </div>
+
+      {/* Overlay de prévia da página pública */}
+      {previewOpen && (
+        <DraftPreview
+          draft={draft}
+          onThemeChange={(id) => update('theme', id)}
+          onClose={() => setPreviewOpen(false)}
+        />
+      )}
     </main>
   );
 }

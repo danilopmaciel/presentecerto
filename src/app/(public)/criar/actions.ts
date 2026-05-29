@@ -33,6 +33,7 @@ type DraftInput = {
   pix_key?: unknown;
   full_name?: unknown;
   phone?: unknown;
+  theme?: unknown;
   gifts?: DraftGiftInput[];
   suggestions?: DraftSuggestionInput[];
 };
@@ -85,6 +86,8 @@ export async function finalizeDraft(input: DraftInput) {
 
   const slug = uniqueSlug(parsed.data.title);
   const planFeeCents = parsed.data.plan_tier === 'themed' ? 5000 : 2000;
+  // Tema só vale no plano Temático; no Básico fica sempre no padrão.
+  const theme = parsed.data.plan_tier === 'themed' ? String(input.theme ?? 'default') : 'default';
 
   const { data: event, error } = await supabase
     .from('events')
@@ -98,6 +101,7 @@ export async function finalizeDraft(input: DraftInput) {
       location_maps_url: parsed.data.location_maps_url || null,
       plan_tier: parsed.data.plan_tier,
       plan_fee_cents: planFeeCents,
+      theme,
       status: 'draft'
     })
     .select('id')
