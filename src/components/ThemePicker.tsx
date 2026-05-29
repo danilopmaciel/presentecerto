@@ -4,7 +4,8 @@ import { useOptimistic, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { THEMES } from '@/lib/themes';
 import { CustomThemeEditor } from './CustomThemeEditor';
-import type { Palette } from '@/lib/colors';
+import { AiImageModal } from './AiImageModal';
+import { extractPalette, type Palette } from '@/lib/colors';
 
 const CUSTOM_ID = '__custom__';
 
@@ -46,6 +47,36 @@ export function ThemePicker({
   // Quando salva no editor, automaticamente vira o ativo.
   const [customOpen, setCustomOpen] = useState(activeId === CUSTOM_ID);
 
+  // Modal de geração por IA acionado pelo card "Criar com IA"
+  const [aiOpen, setAiOpen] = useState(false);
+  const [aiSaving, setAiSaving] = useState(false);
+  const [aiError, setAiError] = useState<string | null>(null);
+
+  // Quando a IA devolve uma imagem, aplica direto como tema personalizado:
+  // extrai a paleta e salva via onSaveCustom.
+  async function applyAiImage(url: string) {
+    if (!onSaveCustom) return;
+    setAiSaving(true);
+    setAiError(null);
+    try {
+      const palette = await extractPalette(url);
+      const fd = new FormData();
+      fd.set('bg_url', url);
+      fd.set('palette', JSON.stringify(palette));
+      const res = (await onSaveCustom(fd)) ?? {};
+      if (res.error) {
+        setAiError(res.error);
+        return;
+      }
+      setCustomOpen(true);
+      router.refresh();
+    } catch {
+      setAiError('Imagem gerada, mas não consegui extrair a paleta. Tente abrir em "Personalizado".');
+    } finally {
+      setAiSaving(false);
+    }
+  }
+
   function select(themeId: string) {
     if (themeId === optimisticTheme) {
       // Re-clicar no Custom abre/fecha o editor
@@ -77,6 +108,32 @@ export function ThemePicker({
   return (
     <div className="mt-4 space-y-4">
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+        {/* Card "Criar com IA" — primeira opção do temático */}
+        {aiEnabled && customEnabled && (
+          <button
+            type="button"
+            onClick={() => setAiOpen(true)}
+            disabled={aiSaving || !eventId}
+            title={!eventId ? 'Salve o evento antes de usar IA' : 'Gerar um fundo único por IA'}
+            className="group relative overflow-hidden rounded-lg border-2 border-purple-300 text-left transition hover:border-purple-500 disabled:opacity-60"
+          >
+            <div className="relative h-24 w-full overflow-hidden bg-gradient-to-br from-brand-100 via-purple-100 to-pink-100">
+              <div className="absolute inset-0 flex items-center justify-center text-4xl transition group-hover:scale-110">
+                {aiSaving ? '⏳' : '✨'}
+              </div>
+              <div className="absolute right-1.5 top-1.5 rounded-full bg-purple-600 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wide text-white shadow">
+                IA
+              </div>
+            </div>
+            <div className="px-3 py-2">
+              <div className="text-sm font-semibold text-purple-700">Criar com IA</div>
+              <div className="mt-0.5 text-xs text-gray-600">
+                {aiSaving ? 'Aplicando...' : 'Descreva e a IA cria o fundo'}
+              </div>
+            </div>
+          </button>
+        )}
+
         {THEMES.map((t) => {
           const selected = optimisticTheme === t.id;
           return (
@@ -179,6 +236,23 @@ export function ThemePicker({
           </button>
         )}
       </div>
+
+      {aiError && (
+        <div className="rounded-md border border-red-200 bg-red-50 p-2 text-xs text-red-700">
+          {aiError}
+        </div>
+      )}
+
+      {/* Modal de geração por IA (aplica como tema personalizado ao escolher) */}
+      {aiEnabled && (
+        <AiImageModal
+          open={aiOpen}
+          onClose={() => setAiOpen(false)}
+          onPick={applyAiImage}
+          scope="bg"
+          eventId={eventId}
+        />
+      )}
 
       {/* Editor inline do tema personalizado */}
       {customEnabled && customOpen && onSaveCustom && onClearCustom && (

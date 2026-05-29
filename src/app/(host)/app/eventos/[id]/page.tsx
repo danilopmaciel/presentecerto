@@ -652,7 +652,9 @@ export default async function EventDetailPage({
   const publicUrl = `${site}/e/${event.slug}`;
   const isPublished = event.status === 'published';
   const testMode = process.env.NEXT_PUBLIC_TEST_MODE === 'true';
-  const aiEnabled = process.env.NEXT_PUBLIC_AI_GENERATION_ENABLED === 'true';
+  // IA fica disponível por padrão no plano Temático. Pra desligar (ex.: sem
+  // GEMINI_API_KEY configurada), seta NEXT_PUBLIC_AI_GENERATION_ENABLED=false.
+  const aiEnabled = process.env.NEXT_PUBLIC_AI_GENERATION_ENABLED !== 'false';
   const planQrDataUrl = event.plan_pix_payload
     ? await QRCode.toDataURL(event.plan_pix_payload, { margin: 1, width: 240 })
     : null;
