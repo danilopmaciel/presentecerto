@@ -18,6 +18,7 @@ type DraftGift = {
   kind: 'gift' | 'buffet';
   quota_value: number;
   quota_total: number;
+  image_url: string;
 };
 
 type DraftSuggestion = {
@@ -50,6 +51,10 @@ const emptyDraft: Draft = {
   gifts: [],
   suggestions: []
 };
+
+function emptyGift(): Omit<DraftGift, 'id'> {
+  return { title: '', description: '', kind: 'gift', quota_value: 0, quota_total: 10, image_url: '' };
+}
 
 function loadDraft(): Draft {
   if (typeof window === 'undefined') return emptyDraft;
@@ -655,9 +660,37 @@ function GiftListSection({
   const [kind, setKind] = useState<'gift' | 'buffet'>('gift');
   const [quotaValue, setQuotaValue] = useState('');
   const [quotaTotal, setQuotaTotal] = useState('10');
+  const [imageUrl, setImageUrl] = useState('');
+  const [fetchBusy, setFetchBusy] = useState(false);
+  const [fetchError, setFetchError] = useState<string | null>(null);
   const [open, setOpen] = useState(false);
 
   const isBuffet = planTier === 'themed' && kind === 'buffet';
+
+  async function handleFetchImage() {
+    const url = imageUrl.trim();
+    if (!url) return;
+    setFetchBusy(true);
+    setFetchError(null);
+    try {
+      const res = await fetch('/api/fetch-og-image', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ url })
+      });
+      const json = await res.json();
+      if (!res.ok || !json.ok) {
+        setFetchError(json.error ?? 'Não consegui pegar a imagem.');
+      } else {
+        setImageUrl(json.image_url);
+        setFetchError(null);
+      }
+    } catch {
+      setFetchError('Erro ao buscar a imagem.');
+    } finally {
+      setFetchBusy(false);
+    }
+  }
 
   function handleAdd(e: React.FormEvent) {
     e.preventDefault();
@@ -668,9 +701,11 @@ function GiftListSection({
       description: description.trim(),
       kind,
       quota_value: val,
-      quota_total: isBuffet ? 999999 : Math.max(1, parseInt(quotaTotal, 10) || 1)
+      quota_total: isBuffet ? 999999 : Math.max(1, parseInt(quotaTotal, 10) || 1),
+      image_url: imageUrl.trim()
     });
-    setTitle(''); setDescription(''); setQuotaValue(''); setQuotaTotal('10'); setKind('gift'); setOpen(false);
+    setTitle(''); setDescription(''); setQuotaValue(''); setQuotaTotal('10');
+    setKind('gift'); setImageUrl(''); setFetchError(null); setOpen(false);
   }
 
   return (
@@ -678,14 +713,23 @@ function GiftListSection({
       {gifts.length > 0 && (
         <ul className="divide-y divide-gray-100">
           {gifts.map((g) => (
-            <li key={g.id} className="flex items-center justify-between gap-3 py-2.5">
+            <li key={g.id} className="flex items-center gap-3 py-2.5">
+              {g.image_url ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={g.image_url}
+                  alt={g.title}
+                  className="h-12 w-12 shrink-0 rounded-md border border-gray-200 object-cover"
+                />
+              ) : (
+                <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-md border border-gray-100 bg-gray-50 text-2xl">
+                  {g.kind === 'buffet' ? '🍽️' : '🎁'}
+                </span>
+              )}
               <div className="min-w-0 flex-1">
-                <div className="flex items-center gap-2">
-                  <span className="text-base">{g.kind === 'buffet' ? '🍽️' : '🎁'}</span>
-                  <span className="truncate font-medium text-gray-900">{g.title}</span>
-                </div>
-                {g.description && <div className="mt-0.5 text-xs text-gray-500 pl-6">{g.description}</div>}
-                <div className="mt-0.5 pl-6 text-xs text-gray-500">
+                <div className="truncate font-medium text-gray-900">{g.title}</div>
+                {g.description && <div className="truncate text-xs text-gray-500">{g.description}</div>}
+                <div className="text-xs text-gray-500">
                   {g.kind === 'buffet'
                     ? `R$ ${g.quota_value.toFixed(2).replace('.', ',')} por pessoa`
                     : `R$ ${g.quota_value.toFixed(2).replace('.', ',')} × ${g.quota_total} cota(s)`}
@@ -743,6 +787,48 @@ function GiftListSection({
             placeholder="Descrição opcional"
             className="w-full rounded-md border border-gray-300 px-3 py-2"
           />
+
+          {/* Foto / URL com busca de thumbnail */}
+          <div>
+            <div className="text-xs text-gray-600">
+              {isBuffet
+                ? 'Foto (opcional): cole um link de imagem.'
+                : 'Foto: cole o link do produto e clique em 🔍 Buscar, ou cole direto a URL da imagem.'}
+            </div>
+            <div className="mt-1.5 flex gap-2">
+              <input
+                type="url"
+                value={imageUrl}
+                onChange={(e) => { setImageUrl(e.target.value); setFetchError(null); }}
+                placeholder={isBuffet ? 'URL da foto (opcional)' : 'Link da loja ou da imagem'}
+                className="min-w-0 flex-1 rounded-md border border-gray-300 px-3 py-2 text-sm"
+              />
+              {!isBuffet && (
+                <button
+                  type="button"
+                  onClick={handleFetchImage}
+                  disabled={fetchBusy || !imageUrl.trim()}
+                  className="shrink-0 rounded-md border border-brand-300 bg-white px-3 py-2 text-sm text-brand-700 hover:bg-brand-50 disabled:opacity-60"
+                >
+                  {fetchBusy ? 'Buscando...' : '🔍 Buscar'}
+                </button>
+              )}
+            </div>
+            {fetchError && (
+              <div className="mt-1 rounded-md border border-red-200 bg-red-50 p-2 text-xs text-red-700">{fetchError}</div>
+            )}
+            {imageUrl && (
+              <div className="mt-2 overflow-hidden rounded-md border border-gray-200 bg-gray-50">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={imageUrl}
+                  alt="Pré-visualização"
+                  className="h-32 w-full object-cover"
+                  onError={() => setFetchError('Imagem não carregou. Tente outro link.')}
+                />
+              </div>
+            )}
+          </div>
 
           <div className="grid grid-cols-2 gap-3">
             <label className="block text-sm">

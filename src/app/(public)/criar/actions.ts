@@ -13,6 +13,7 @@ type DraftGiftInput = {
   kind?: unknown;
   quota_value?: unknown;
   quota_total?: unknown;
+  image_url?: unknown;
 };
 
 type DraftSuggestionInput = {
@@ -120,10 +121,12 @@ export async function finalizeDraft(input: DraftInput) {
           rawKind === 'buffet' && planTier === 'themed' ? 'buffet' : 'gift';
         const quotaValue = Math.round(Number(g.quota_value ?? 0) * 100);
         const quotaTotal = kind === 'buffet' ? 999999 : Math.max(1, Number(g.quota_total ?? 1));
+        const imageUrl = String(g.image_url ?? '').trim();
         return {
           event_id: event.id,
           title: String(g.title ?? '').trim().slice(0, 200),
           description: String(g.description ?? '').trim() || null,
+          image_path: imageUrl || null,
           kind,
           quota_value_cents: quotaValue,
           quota_total: quotaTotal,
