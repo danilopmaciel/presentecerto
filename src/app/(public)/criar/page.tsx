@@ -829,14 +829,27 @@ function GiftListSection({
               </div>
             )}
             {imageUrl && (
-              <div className="mt-2 overflow-hidden rounded-md border border-gray-200 bg-gray-50">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={imageUrl}
-                  alt="Pré-visualização"
-                  className="h-32 w-full object-cover"
-                  onError={() => setFetchError('Imagem não carregou. Tente outro link.')}
-                />
+              <div className="mt-2 flex items-start gap-3 rounded-md border border-green-200 bg-green-50 p-2">
+                <div className="shrink-0 overflow-hidden rounded-md border border-gray-200 bg-white">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={imageUrl}
+                    alt="Pré-visualização"
+                    className="h-20 w-20 object-contain"
+                    onError={() => setFetchError('Imagem não carregou. Tente outro link.')}
+                  />
+                </div>
+                <div className="min-w-0 flex-1 text-xs text-green-800">
+                  <div className="font-semibold">✓ Imagem capturada</div>
+                  <div className="mt-0.5 break-all text-green-700 opacity-75">{imageUrl}</div>
+                  <button
+                    type="button"
+                    onClick={() => { setImageUrl(''); setFetchError(null); }}
+                    className="mt-1.5 text-red-500 hover:underline"
+                  >
+                    Remover imagem
+                  </button>
+                </div>
               </div>
             )}
           </div>
