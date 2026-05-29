@@ -815,7 +815,18 @@ function GiftListSection({
               )}
             </div>
             {fetchError && (
-              <div className="mt-1 rounded-md border border-red-200 bg-red-50 p-2 text-xs text-red-700">{fetchError}</div>
+              <div className="mt-1 space-y-1.5">
+                <div className="rounded-md border border-red-200 bg-red-50 p-2 text-xs text-red-700">{fetchError}</div>
+                {/mercadolivre|mercadolibre|meli\.la/i.test(imageUrl) ? (
+                  <div className="rounded-md border border-yellow-200 bg-yellow-50 p-2 text-xs text-yellow-800">
+                    💡 <strong>Dica Mercado Livre:</strong> em vez de copiar o link da barra de endereço, clique no botão <strong>Compartilhar</strong> no produto — o link gerado (meli.la/…) funciona muito melhor com a busca de imagens.
+                  </div>
+                ) : (
+                  <div className="rounded-md border border-yellow-200 bg-yellow-50 p-2 text-xs text-yellow-800">
+                    💡 Algumas lojas bloqueiam a busca automática. Tente usar o botão <strong>Compartilhar</strong> da página do produto — o link gerado costuma funcionar melhor.
+                  </div>
+                )}
+              </div>
             )}
             {imageUrl && (
               <div className="mt-2 overflow-hidden rounded-md border border-gray-200 bg-gray-50">
