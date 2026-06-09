@@ -1,5 +1,5 @@
 /**
- * Definição centralizada dos temas visuais do PresenteCerto.
+ * Definição centralizada dos temas visuais do Presente no Pix.
  *
  * IMPORTANTE: todas as artes são originais e "inspiradas em" universos
  * populares (princesas, super-heróis, espaço, etc.) sem reproduzir

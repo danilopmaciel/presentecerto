@@ -558,7 +558,7 @@ export default async function EventDetailPage({
       amountCents: ev.plan_fee_cents,
       externalReference: ev.id,
       buyer: { name: user.email ?? 'anfitriao', email: user.email },
-      description: `Plano ${ev.plan_tier === 'themed' ? 'Tematico' : 'Basico'} PresenteCerto`
+      description: `Plano ${ev.plan_tier === 'themed' ? 'Tematico' : 'Basico'} Presente no Pix`
       // sem receiver → usa as ENVs SAAS_PIX_* (a chave é NOSSA)
     });
 
@@ -686,8 +686,8 @@ export default async function EventDetailPage({
       <section className="rounded-lg border border-gray-200 bg-white p-6">
         <h2 className="font-semibold">Configuração de pagamento</h2>
         <p className="mt-1 text-sm text-gray-600">
-          Os presentes vão direto pra sua chave Pix — o PresenteCerto não retém o valor. Confira que
-          a chave está no formato certo antes de divulgar a página.
+          Os presentes vão direto pra sua chave Pix — o Presente no Pix não retém o valor. Confira
+          que a chave está no formato certo antes de divulgar a página.
         </p>
         <div className="mt-4">
           <PixKeyEditor current={profile?.pix_key ?? null} onSave={updatePixKey} />
@@ -850,7 +850,7 @@ export default async function EventDetailPage({
               {event.plan_payment_status === 'pending' && (
                 <form action={markPlanPaidByHost}>
                   <button className="rounded-md bg-green-600 px-4 py-2 text-white hover:bg-green-700">
-                    Já paguei — avisar PresenteCerto
+                    Já paguei — avisar Presente no Pix
                   </button>
                 </form>
               )}

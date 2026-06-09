@@ -92,7 +92,7 @@ export default function LoginPage() {
 
   return (
     <main className="mx-auto flex min-h-dvh max-w-md flex-col justify-center px-6">
-      <h1 className="text-2xl font-bold">Entrar no PresenteCerto</h1>
+      <h1 className="text-2xl font-bold">Entrar no Presente no Pix</h1>
       <p className="mt-2 text-sm text-gray-600">
         Use sua conta Google ou receba um link mágico por e-mail. Sem senha.
       </p>

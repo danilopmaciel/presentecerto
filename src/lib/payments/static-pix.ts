@@ -20,7 +20,7 @@ export class StaticPixProvider implements PaymentProvider {
   async createCharge(input: CreateChargeInput): Promise<CreateChargeResult> {
     const receiver = input.receiver ?? {
       pixKey: process.env.SAAS_PIX_KEY ?? '',
-      merchantName: process.env.SAAS_PIX_MERCHANT_NAME ?? 'PRESENTECERTO',
+      merchantName: process.env.SAAS_PIX_MERCHANT_NAME ?? 'PRESENTENOPIX',
       merchantCity: process.env.SAAS_PIX_MERCHANT_CITY ?? 'SAO PAULO'
     };
 

@@ -35,7 +35,7 @@ type PreviewDraft = {
 
 // Pix payload de exemplo só pra renderizar o QR no preview (não cobra nada)
 const DEMO_PIX_PAYLOAD =
-  '00020126580014BR.GOV.BCB.PIX0136demo-presentecerto-12345-67890-abc52040000530398654040.005802BR5913PRESENTECERTO6009SAO PAULO62070503***6304ABCD';
+  '00020126580014BR.GOV.BCB.PIX0136demo-presentenopix-12345-67890-abc52040000530398654040.005802BR5913PRESENTENOPIX6009SAO PAULO62070503***6304ABCD';
 
 function formatDateLabel(iso: string): string {
   if (!iso) return 'Data a definir';

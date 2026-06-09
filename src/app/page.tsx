@@ -8,7 +8,7 @@ export default async function LandingPage() {
   return (
     <main className="min-h-dvh bg-gradient-to-b from-brand-50 to-white">
       <header className="mx-auto flex max-w-5xl items-center justify-between px-4 py-6 sm:px-6">
-        <div className="text-xl font-bold text-brand-700">PresenteCerto</div>
+        <div className="text-xl font-bold text-brand-700">Presente no Pix</div>
         <nav className="flex gap-3 text-sm">
           {user ? (
             <Link href="/app" className="rounded-md bg-brand-100 px-3 py-2 font-medium text-brand-700 hover:bg-brand-200">
@@ -32,12 +32,12 @@ export default async function LandingPage() {
 
       <section className="mx-auto max-w-3xl px-4 py-10 text-center sm:px-6 md:py-16">
         <h1 className="text-3xl font-bold leading-tight sm:text-4xl md:text-5xl">
-          Seu aniversário,{' '}
-          <span className="text-brand-600">sem planilha no grupo do WhatsApp</span>.
+          Seus convidados querem{' '}
+          <span className="text-brand-600">acertar o presente</span>. Mostre o caminho.
         </h1>
         <p className="mt-6 text-lg text-gray-700">
-          Crie uma página bonita do seu evento, divida presentes em cotas de Pix e receba
-          confirmações de presença. Do convite ao agradecimento, tudo em um link.
+          Lista de presentes com cotas de Pix, confirmação de presença e tudo num link.
+          Sem repetir, sem trocar, sem dor de cabeça.
         </p>
         <div className="mt-10 flex flex-col items-center justify-center gap-3 sm:flex-row">
           <Link

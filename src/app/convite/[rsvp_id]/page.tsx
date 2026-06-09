@@ -205,7 +205,7 @@ export default async function ConvitePage({
             className="px-8 py-4 text-center text-[10px] text-white/70"
             style={{ background: theme.accent }}
           >
-            Gerado pelo PresenteCerto · presentecerto.com.br
+            Gerado pelo Presente no Pix · presentenopix.com.br
           </div>
         </div>
       </div>

@@ -227,7 +227,7 @@ export default async function PublicEventPage({
         <footer className="mt-12 text-center text-xs text-gray-500">
           Página criada com{' '}
           <Link href="/" className="underline">
-            PresenteCerto
+            Presente no Pix
           </Link>
         </footer>
       </div>

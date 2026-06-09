@@ -309,7 +309,7 @@ function CriarPageInner() {
       {/* Header */}
       <div className="border-b border-gray-200 bg-white">
         <div className="mx-auto flex max-w-3xl items-center justify-between px-4 py-3 sm:px-6">
-          <Link href="/" className="text-lg font-bold text-brand-700">PresenteCerto</Link>
+          <Link href="/" className="text-lg font-bold text-brand-700">Presente no Pix</Link>
           <div className="flex items-center gap-4">
             {!userId && !authChecking && (
               <Link href="/login" className="text-sm text-gray-600 hover:underline">Já tenho conta · Entrar</Link>
@@ -429,7 +429,7 @@ function CriarPageInner() {
         <section className="rounded-lg border border-gray-200 bg-white p-6">
           <h2 className="font-semibold">Configuração de pagamento</h2>
           <p className="mt-1 text-sm text-gray-600">
-            Os presentes vão direto pra sua chave Pix — o PresenteCerto não retém o valor. Confira que a chave está no formato certo antes de divulgar a página.
+            Os presentes vão direto pra sua chave Pix — o Presente no Pix não retém o valor. Confira que a chave está no formato certo antes de divulgar a página.
           </p>
 
           <div className="mt-4">

@@ -8,11 +8,11 @@ export const viewport: Viewport = {
 };
 
 export const metadata: Metadata = {
-  title: 'PresenteCerto — Lista de presentes + RSVP com Pix',
+  title: 'Presente no Pix — Lista de presentes + RSVP em um link',
   description:
-    'Crie um evento, compartilhe seu link e receba confirmações e cotas de presente via Pix. Sem complicação.',
+    'Seus convidados querem acertar o presente. Lista em cotas de Pix, confirmação de presença e tudo num link. Sem repetir, sem trocar.',
   openGraph: {
-    title: 'PresenteCerto',
+    title: 'Presente no Pix',
     description: 'Lista de presentes com cotas em Pix + RSVP para o seu evento.',
     type: 'website'
   }

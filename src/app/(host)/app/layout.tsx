@@ -37,7 +37,7 @@ export default async function HostLayout({ children }: { children: React.ReactNo
       <header className="border-b border-gray-200 bg-white">
         <div className="mx-auto flex max-w-5xl items-center justify-between px-4 py-4 sm:px-6">
           <Link href="/app" className="text-lg font-bold text-brand-700">
-            PresenteCerto
+            Presente no Pix
           </Link>
           <div className="flex items-center gap-2 text-sm sm:gap-4">
             {isAdmin && (
