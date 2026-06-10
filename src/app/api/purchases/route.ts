@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { createClient, createAdminClient } from '@/lib/supabase/server';
 import { getPaymentProvider } from '@/lib/payments';
 import { purchaseSchema } from '@/lib/validation/schemas';
+import { allowPurchase, clientIp } from '@/lib/ratelimit';
 
 // Campo 26 do EMV Pix tem limite de 99 chars. baseLength = GUI(18) + tag01(2+2+pixKey.length) + tag02(4).
 function buildPixDescription(pixKey: string, rawDescription: string): string {
@@ -16,6 +17,13 @@ function buildPixDescription(pixKey: string, rawDescription: string): string {
  * Valida disponibilidade atomicamente via RPC `purchase_quota`.
  */
 export async function POST(request: Request) {
+  if (!(await allowPurchase(clientIp(request.headers)))) {
+    return NextResponse.json(
+      { error: 'Muitas tentativas. Aguarde um minuto e tente de novo.' },
+      { status: 429 }
+    );
+  }
+
   let body: unknown;
   try {
     body = await request.json();

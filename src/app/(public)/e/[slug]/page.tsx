@@ -45,22 +45,39 @@ export default async function PublicEventPage({
   const isAdminView = !!user && isAdminEmail(user.email);
   if (event.status !== 'published' && !isOwnerPreview && !isAdminView) notFound();
 
-  const { data: gifts } = await admin
-    .from('gift_items')
-    .select('id, title, description, image_path, quota_value_cents, quota_total, kind')
-    .eq('event_id', event.id)
-    .order('sort_order', { ascending: true });
+  // As 3 queries dependem só de event.id — em paralelo, o tempo de banco da
+  // página cai de ~3 RTTs em cascata pra 1 (banco fica em us-west-2, longe do BR).
+  const [{ data: gifts }, { data: reservedRows }, { data: paidPurchases }] = await Promise.all([
+    admin
+      .from('gift_items')
+      .select('id, title, description, image_path, quota_value_cents, quota_total, kind')
+      .eq('event_id', event.id)
+      .order('sort_order', { ascending: true }),
+    // Cotas reservadas — admin client ignora RLS, então convidados anônimos veem
+    // a barra de progresso real (não zero, como acontecia com a anon key).
+    admin
+      .from('gift_purchases')
+      .select('gift_item_id, quotas, status, expires_at')
+      .eq('event_id', event.id),
+    // Colaboradores — só buyer_name (NÃO email/phone); filtro de privacidade.
+    admin
+      .from('gift_purchases')
+      .select('buyer_name, gift_item_id, paid_at')
+      .eq('event_id', event.id)
+      .eq('status', 'paid')
+      .order('paid_at', { ascending: false })
+  ]);
 
-  // Cotas reservadas — admin client ignora RLS, então convidados anônimos veem
-  // a barra de progresso real (não zero, como acontecia com a anon key).
-  const { data: reservedRows } = await admin
-    .from('gift_purchases')
-    .select('gift_item_id, quotas, status')
-    .eq('event_id', event.id);
-
+  const now = Date.now();
   const reservedMap = new Map<string, number>();
   for (const p of reservedRows ?? []) {
-    if (['pending', 'paid_claimed', 'paid'].includes(p.status)) {
+    // pending só prende cota enquanto o Pix não venceu — reserva abandonada
+    // volta pra lista mesmo antes de o cron marcá-la como expired.
+    const holds =
+      p.status === 'paid' ||
+      p.status === 'paid_claimed' ||
+      (p.status === 'pending' && (!p.expires_at || new Date(p.expires_at).getTime() > now));
+    if (holds) {
       reservedMap.set(p.gift_item_id, (reservedMap.get(p.gift_item_id) ?? 0) + p.quotas);
     }
   }
@@ -73,16 +90,7 @@ export default async function PublicEventPage({
       available: g.quota_total - (reservedMap.get(g.id) ?? 0)
     }));
 
-  // Colaboradores — só selecionamos buyer_name (NÃO email/phone). Esse é o filtro
-  // de privacidade: mesmo via admin client, esses campos sensíveis nunca chegam
-  // ao componente cliente.
   const giftTitleById = new Map((gifts ?? []).map((g) => [g.id, g.title]));
-  const { data: paidPurchases } = await admin
-    .from('gift_purchases')
-    .select('buyer_name, gift_item_id, paid_at')
-    .eq('event_id', event.id)
-    .eq('status', 'paid')
-    .order('paid_at', { ascending: false });
   const collaborators = (paidPurchases ?? []).map((p) => ({
     name: p.buyer_name,
     giftTitle: giftTitleById.get(p.gift_item_id) ?? 'Presente'
