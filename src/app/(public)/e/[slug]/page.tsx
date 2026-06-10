@@ -6,8 +6,14 @@ import { getTheme } from '@/lib/themes';
 import { RsvpAndGiftForm } from './RsvpAndGiftForm';
 import { GiftSuggestionsDisplay } from '@/components/GiftSuggestionsDisplay';
 import type { Suggestion } from '@/components/GiftSuggestionsEditor';
+import type { Metadata } from 'next';
 
 export const dynamic = 'force-dynamic';
+
+// Páginas de evento são por-link (privadas). Não devem aparecer em buscas.
+export const metadata: Metadata = {
+  robots: { index: false, follow: false }
+};
 
 export default async function PublicEventPage({
   params

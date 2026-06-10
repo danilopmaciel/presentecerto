@@ -19,10 +19,12 @@ export async function generateMetadata({
     .select('guest_name, events!inner(title)')
     .eq('id', rsvp_id)
     .single();
-  if (!data) return { title: 'Convite' };
+  // Convite mostra o nome do convidado → nunca indexar.
+  const robots = { index: false, follow: false } as const;
+  if (!data) return { title: 'Convite', robots };
   const ev = (data as { events: { title: string }[] }).events;
   const title = Array.isArray(ev) ? ev[0]?.title : (ev as unknown as { title: string })?.title;
-  return { title: `Convite — ${title ?? ''}` };
+  return { title: `Convite — ${title ?? ''}`, robots };
 }
 
 export default async function ConvitePage({
