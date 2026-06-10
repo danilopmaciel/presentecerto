@@ -2,7 +2,7 @@
   "crons": [
     {
       "path": "/api/cron/expire-purchases",
-      "schedule": "*/10 * * * *"
+      "schedule": "0 3 * * *"
     }
   ]
 }
