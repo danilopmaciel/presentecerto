@@ -1,7 +1,9 @@
 'use server';
 
+import { headers } from 'next/headers';
 import { createClient, createAdminClient } from '@/lib/supabase/server';
 import { rsvpSchema } from '@/lib/validation/schemas';
+import { allowRsvp, clientIp } from '@/lib/ratelimit';
 
 const FIELD_LABELS: Record<string, string> = {
   event_id: 'Identificador do evento',
@@ -28,6 +30,10 @@ export async function submitRsvp(formData: FormData) {
   const honeypot = formData.get('website_url');
   if (honeypot) {
     return { error: 'Bot detected' };
+  }
+
+  if (!(await allowRsvp(clientIp(await headers())))) {
+    return { error: 'Muitas tentativas. Aguarde um minuto e tente de novo.' };
   }
 
   // 2. Normaliza valores antes de validar — campos opcionais vazios viram undefined.
