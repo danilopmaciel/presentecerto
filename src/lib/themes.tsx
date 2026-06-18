@@ -22,8 +22,25 @@ export type ThemeId =
   | 'unicornio'
   | 'piratas';
 
+export type ThemeCategory =
+  | 'casamento'
+  | 'cha-bebe'
+  | 'cha-casa'
+  | 'aniversario'
+  | 'infantil';
+
+export const THEME_CATEGORIES: { id: ThemeCategory; label: string }[] = [
+  { id: 'casamento', label: '💍 Casamento' },
+  { id: 'cha-bebe', label: '👶 Chá de bebê' },
+  { id: 'cha-casa', label: '🏠 Chá de casa nova' },
+  { id: 'aniversario', label: '🎉 Aniversário' },
+  { id: 'infantil', label: '🧒 Infantil' }
+];
+
 export type Theme = {
-  id: ThemeId;
+  id: string;
+  /** Aba a que o tema pertence. Sem categoria = universal (sempre visível). */
+  category?: ThemeCategory;
   name: string;
   pageBg: string;
   titleColor: string;
@@ -129,6 +146,53 @@ const compassPattern = (c1: string, c2: string) => svgDataUrl(`
     <path d="M-8 0 L0 2 L8 0 L0 -2 Z" fill="${c2}" opacity="0.5"/>
   </g>
   <path d="M58 60 l2 4 l4 0 l-3 2 l1 4 l-4 -2 l-4 2 l1 -4 l-3 -2 l4 0 z" fill="${c2}" opacity="0.5"/>
+</svg>`);
+
+// ----- Padrões elegantes (temas adultos) ------------------------------------
+
+const botanicalPattern = (c1: string, c2: string) => svgDataUrl(`
+<svg xmlns="http://www.w3.org/2000/svg" width="110" height="110" viewBox="0 0 110 110">
+  <path d="M22 96 Q30 60 24 26" stroke="${c1}" stroke-width="1.4" fill="none" opacity="0.4"/>
+  <g fill="${c2}" opacity="0.4">
+    <ellipse cx="30" cy="42" rx="6" ry="3" transform="rotate(40 30 42)"/>
+    <ellipse cx="17" cy="54" rx="6" ry="3" transform="rotate(-40 17 54)"/>
+    <ellipse cx="31" cy="60" rx="6" ry="3" transform="rotate(40 31 60)"/>
+    <ellipse cx="18" cy="72" rx="6" ry="3" transform="rotate(-40 18 72)"/>
+  </g>
+  <g fill="${c2}" opacity="0.28">
+    <ellipse cx="84" cy="82" rx="5" ry="2.5" transform="rotate(30 84 82)"/>
+    <ellipse cx="93" cy="73" rx="5" ry="2.5" transform="rotate(-30 93 73)"/>
+  </g>
+</svg>`);
+
+const confettiPattern = (c1: string, c2: string) => svgDataUrl(`
+<svg xmlns="http://www.w3.org/2000/svg" width="80" height="80" viewBox="0 0 80 80">
+  <rect x="12" y="14" width="6" height="3" fill="${c1}" opacity="0.6" transform="rotate(25 15 15)"/>
+  <rect x="55" y="20" width="6" height="3" fill="${c2}" opacity="0.55" transform="rotate(-20 58 21)"/>
+  <circle cx="35" cy="40" r="2.2" fill="${c2}" opacity="0.6"/>
+  <rect x="60" y="55" width="6" height="3" fill="${c1}" opacity="0.55" transform="rotate(40 63 56)"/>
+  <circle cx="18" cy="62" r="2" fill="${c1}" opacity="0.5"/>
+  <rect x="38" y="66" width="6" height="3" fill="${c2}" opacity="0.5" transform="rotate(-30 41 67)"/>
+</svg>`);
+
+const floralPattern = (c1: string, c2: string) => svgDataUrl(`
+<svg xmlns="http://www.w3.org/2000/svg" width="90" height="90" viewBox="0 0 90 90">
+  <g fill="${c1}" opacity="0.38" transform="translate(24 26)">
+    <circle cx="0" cy="-5" r="3"/><circle cx="5" cy="-1" r="3"/><circle cx="3" cy="5" r="3"/><circle cx="-3" cy="5" r="3"/><circle cx="-5" cy="-1" r="3"/>
+  </g>
+  <g fill="${c2}" opacity="0.32" transform="translate(66 64)">
+    <circle cx="0" cy="-4" r="2.5"/><circle cx="4" cy="-1" r="2.5"/><circle cx="2.5" cy="4" r="2.5"/><circle cx="-2.5" cy="4" r="2.5"/><circle cx="-4" cy="-1" r="2.5"/>
+  </g>
+  <circle cx="24" cy="26" r="1.8" fill="${c2}" opacity="0.6"/>
+  <circle cx="66" cy="64" r="1.5" fill="${c1}" opacity="0.6"/>
+</svg>`);
+
+const starsPattern = (c1: string, c2: string) => svgDataUrl(`
+<svg xmlns="http://www.w3.org/2000/svg" width="80" height="80" viewBox="0 0 80 80">
+  <path d="M20 14 l1.5 4 l4 0 l-3 2.5 l1 4 l-3.5 -2.5 l-3.5 2.5 l1 -4 l-3 -2.5 l4 0 z" fill="${c1}" opacity="0.5"/>
+  <path d="M58 50 l1.2 3 l3 0 l-2.4 2 l0.8 3 l-2.6 -2 l-2.6 2 l0.8 -3 l-2.4 -2 l3 0 z" fill="${c2}" opacity="0.5"/>
+  <circle cx="60" cy="20" r="1.4" fill="${c1}" opacity="0.55"/>
+  <circle cx="24" cy="58" r="1.2" fill="${c2}" opacity="0.5"/>
 </svg>`);
 
 // ============================================================================
@@ -876,6 +940,7 @@ const StarsDeco: React.FC = () => (
 // ============================================================================
 
 export const THEMES: Theme[] = [
+  // Universal (sempre visível em todas as abas)
   {
     id: 'default',
     name: 'Padrão',
@@ -883,118 +948,299 @@ export const THEMES: Theme[] = [
     titleColor: 'text-brand-900',
     accent: '#ff6b1a'
   },
+
+  // ---- Casamento ----------------------------------------------------------
   {
-    id: 'infantil-rosa',
-    name: 'Infantil Rosa',
-    pageBg: 'bg-gradient-to-b from-pink-100 via-rose-50 to-white',
-    titleColor: 'text-pink-900',
-    accent: '#ec4899',
-    cardClass: 'bg-white/90 backdrop-blur ring-1 ring-pink-200',
-    pattern: dotsPattern('%23ec4899', '%23fb7185'),
-    HeroArt: BalloonsRosa,
-    Decoration: BalloonsRosaDeco
+    id: 'casamento-botanico',
+    category: 'casamento',
+    name: 'Botânico',
+    pageBg: 'bg-gradient-to-b from-[#eef1e9] to-white',
+    titleColor: 'text-[#43503c]',
+    accent: '#6b7d5e',
+    cardClass: 'bg-white/90 backdrop-blur ring-1 ring-[#d3dcc8]',
+    pattern: botanicalPattern('%236b7d5e', '%23a3b18a')
   },
   {
-    id: 'infantil-azul',
-    name: 'Infantil Azul',
-    pageBg: 'bg-gradient-to-b from-sky-100 via-blue-50 to-white',
-    titleColor: 'text-sky-900',
-    accent: '#0284c7',
-    cardClass: 'bg-white/90 backdrop-blur ring-1 ring-sky-200',
-    pattern: cloudsPattern('%230284c7', '%233b82f6'),
-    HeroArt: BalloonsAzul,
-    Decoration: BalloonsAzulDeco
+    id: 'casamento-romantico',
+    category: 'casamento',
+    name: 'Romântico',
+    pageBg: 'bg-gradient-to-b from-[#fdf0f1] to-white',
+    titleColor: 'text-[#7a4a52]',
+    accent: '#c98a9a',
+    cardClass: 'bg-white/90 backdrop-blur ring-1 ring-[#f0d4d8]',
+    pattern: floralPattern('%23c98a9a', '%23e7b8be')
   },
   {
-    id: 'reino-encantado',
-    name: 'Reino Encantado',
-    pageBg: 'bg-gradient-to-b from-pink-100 via-rose-50 to-amber-50',
-    titleColor: 'text-rose-900',
-    accent: '#db2777',
-    cardClass: 'bg-white/90 backdrop-blur ring-1 ring-rose-200',
-    pattern: heartsStarsPattern('%23ec4899', '%23fbbf24'),
-    HeroArt: ReinoEncantadoHero,
-    Decoration: CrownDeco
+    id: 'casamento-minimalista',
+    category: 'casamento',
+    name: 'Minimalista',
+    pageBg: 'bg-gradient-to-b from-[#f6f5f2] to-white',
+    titleColor: 'text-[#3f3c38]',
+    accent: '#57534e',
+    cardClass: 'bg-white/90 backdrop-blur ring-1 ring-[#e2dfd9]',
+    pattern: dotsPattern('%23a8a29e', '%23d6d3cd')
   },
   {
-    id: 'reino-gelado',
-    name: 'Reino Gelado',
-    pageBg: 'bg-gradient-to-b from-sky-100 via-cyan-50 to-violet-50',
-    titleColor: 'text-cyan-900',
-    accent: '#0e7490',
-    cardClass: 'bg-white/90 backdrop-blur ring-1 ring-cyan-200',
-    pattern: snowflakesPattern('%230e7490', '%237dd3fc'),
-    HeroArt: ReinoGeladoHero,
-    Decoration: SnowflakeDeco
+    id: 'casamento-dourado',
+    category: 'casamento',
+    name: 'Dourado',
+    pageBg: 'bg-gradient-to-b from-[#faf6ec] to-white',
+    titleColor: 'text-[#6e5a26]',
+    accent: '#b8902e',
+    cardClass: 'bg-white/90 backdrop-blur ring-1 ring-[#ecdfc0]',
+    pattern: confettiPattern('%23b8902e', '%23d9bd6e')
   },
   {
-    id: 'super-heroi',
-    name: 'Super Herói',
-    pageBg: 'bg-gradient-to-b from-blue-100 via-red-50 to-white',
-    titleColor: 'text-red-900',
-    accent: '#dc2626',
-    cardClass: 'bg-white/90 backdrop-blur ring-1 ring-red-200',
-    pattern: comicPattern('%23dc2626', '%23fde047'),
-    HeroArt: SuperHeroiHero,
-    Decoration: ShieldDeco
+    id: 'casamento-lavanda',
+    category: 'casamento',
+    name: 'Lavanda',
+    pageBg: 'bg-gradient-to-b from-[#f1eef7] to-white',
+    titleColor: 'text-[#544a6b]',
+    accent: '#8b7aa8',
+    cardClass: 'bg-white/90 backdrop-blur ring-1 ring-[#ddd5ec]',
+    pattern: floralPattern('%238b7aa8', '%23c3b6dd')
   },
   {
-    id: 'espaco',
-    name: 'Aventura Espacial',
-    pageBg: 'bg-gradient-to-b from-violet-200 via-indigo-100 to-white',
-    titleColor: 'text-indigo-900',
-    accent: '#6d28d9',
-    cardClass: 'bg-white/90 backdrop-blur ring-1 ring-indigo-200',
-    pattern: galaxyPattern('%236d28d9', '%23fbbf24'),
-    HeroArt: EspacoHero,
-    Decoration: PlanetDeco
+    id: 'casamento-boho',
+    category: 'casamento',
+    name: 'Boho',
+    pageBg: 'bg-gradient-to-b from-[#f7efe7] to-white',
+    titleColor: 'text-[#6e4a36]',
+    accent: '#b56b4a',
+    cardClass: 'bg-white/90 backdrop-blur ring-1 ring-[#e7d3c2]',
+    pattern: leavesPattern('%23a3784f', '%23c08a5e')
   },
   {
-    id: 'safari',
-    name: 'Safari Aventura',
-    pageBg: 'bg-gradient-to-b from-amber-100 via-yellow-50 to-orange-50',
-    titleColor: 'text-amber-900',
-    accent: '#ca8a04',
-    cardClass: 'bg-white/90 backdrop-blur ring-1 ring-amber-200',
-    pattern: leavesPattern('%2315803d', '%2365a30d'),
-    HeroArt: SafariHero,
-    Decoration: LionDeco
+    id: 'casamento-classico',
+    category: 'casamento',
+    name: 'Clássico',
+    pageBg: 'bg-gradient-to-b from-[#eef1f6] to-white',
+    titleColor: 'text-[#2a3b5e]',
+    accent: '#2a3b5e',
+    cardClass: 'bg-white/90 backdrop-blur ring-1 ring-[#cdd6e6]',
+    pattern: dotsPattern('%232a3b5e', '%237b8aa8')
+  },
+
+  // ---- Chá de bebê --------------------------------------------------------
+  {
+    id: 'bebe-nuvem',
+    category: 'cha-bebe',
+    name: 'Nuvem Neutro',
+    pageBg: 'bg-gradient-to-b from-[#eef1ea] to-white',
+    titleColor: 'text-[#4a5340]',
+    accent: '#8a9a73',
+    cardClass: 'bg-white/90 backdrop-blur ring-1 ring-[#d6dcca]',
+    pattern: cloudsPattern('%238a9a73', '%23b3bf9c')
   },
   {
-    id: 'reino-do-mar',
-    name: 'Reino do Mar',
-    pageBg: 'bg-gradient-to-b from-cyan-100 via-teal-50 to-white',
-    titleColor: 'text-teal-900',
-    accent: '#0d9488',
-    cardClass: 'bg-white/90 backdrop-blur ring-1 ring-teal-200',
-    pattern: wavesPattern('%230d9488', '%2306b6d4'),
-    HeroArt: ReinoMarHero,
-    Decoration: ShellDeco
+    id: 'bebe-sonho',
+    category: 'cha-bebe',
+    name: 'Sonho',
+    pageBg: 'bg-gradient-to-b from-[#f3eff8] to-white',
+    titleColor: 'text-[#574a6b]',
+    accent: '#a08fc4',
+    cardClass: 'bg-white/90 backdrop-blur ring-1 ring-[#ddd4ec]',
+    pattern: dotsPattern('%23a08fc4', '%23cfc4e6')
   },
   {
-    id: 'carros-pista',
-    name: 'Carros & Pista',
-    pageBg: 'bg-gradient-to-b from-red-100 via-orange-50 to-white',
-    titleColor: 'text-red-900',
-    accent: '#dc2626',
-    cardClass: 'bg-white/90 backdrop-blur ring-1 ring-red-200',
-    pattern: checkeredPattern('%23dc2626'),
-    HeroArt: CarrosHero,
-    Decoration: RaceDeco
+    id: 'bebe-estrelinha',
+    category: 'cha-bebe',
+    name: 'Estrelinha',
+    pageBg: 'bg-gradient-to-b from-[#eef0f7] to-white',
+    titleColor: 'text-[#3f4670]',
+    accent: '#6b76b8',
+    cardClass: 'bg-white/90 backdrop-blur ring-1 ring-[#d2d8ee]',
+    pattern: starsPattern('%236b76b8', '%23a8b0dd')
   },
   {
-    id: 'dinos',
-    name: 'Dino Aventura',
-    pageBg: 'bg-gradient-to-b from-orange-100 via-amber-50 to-lime-50',
-    titleColor: 'text-green-900',
-    accent: '#15803d',
-    cardClass: 'bg-white/90 backdrop-blur ring-1 ring-green-200',
-    pattern: leavesPattern('%2315803d', '%237c2d12'),
-    HeroArt: DinosHero,
-    Decoration: DinoDeco
+    id: 'bebe-ursinho',
+    category: 'cha-bebe',
+    name: 'Ursinho',
+    pageBg: 'bg-gradient-to-b from-[#f6efe6] to-white',
+    titleColor: 'text-[#6b5236]',
+    accent: '#a8773f',
+    cardClass: 'bg-white/90 backdrop-blur ring-1 ring-[#e8d8c2]',
+    pattern: dotsPattern('%23a8773f', '%23cfa978')
   },
+  {
+    id: 'bebe-rosa',
+    category: 'cha-bebe',
+    name: 'Rosé Suave',
+    pageBg: 'bg-gradient-to-b from-[#fdeff2] to-white',
+    titleColor: 'text-[#7a4a58]',
+    accent: '#cf8aa3',
+    cardClass: 'bg-white/90 backdrop-blur ring-1 ring-[#f2d6de]',
+    pattern: heartsStarsPattern('%23cf8aa3', '%23e7b8c4')
+  },
+  {
+    id: 'bebe-azul',
+    category: 'cha-bebe',
+    name: 'Azul Sereno',
+    pageBg: 'bg-gradient-to-b from-[#eaf2f8] to-white',
+    titleColor: 'text-[#3a5a72]',
+    accent: '#6f9cc0',
+    cardClass: 'bg-white/90 backdrop-blur ring-1 ring-[#cfe0ec]',
+    pattern: cloudsPattern('%236f9cc0', '%23a8c8de')
+  },
+  {
+    id: 'bebe-arco-iris',
+    category: 'cha-bebe',
+    name: 'Arco-íris Pastel',
+    pageBg: 'bg-gradient-to-b from-[#f4eff5] to-white',
+    titleColor: 'text-[#5a4a66]',
+    accent: '#b58fb0',
+    cardClass: 'bg-white/90 backdrop-blur ring-1 ring-[#e4d6e6]',
+    pattern: rainbowPattern('%23b58fb0', '%23e2a9b0')
+  },
+
+  // ---- Chá de casa nova ---------------------------------------------------
+  {
+    id: 'casa-aconchego',
+    category: 'cha-casa',
+    name: 'Aconchego',
+    pageBg: 'bg-gradient-to-b from-[#f7efe6] to-white',
+    titleColor: 'text-[#6e4a36]',
+    accent: '#b56b4a',
+    cardClass: 'bg-white/90 backdrop-blur ring-1 ring-[#e7d3c0]',
+    pattern: leavesPattern('%23b56b4a', '%23c89a6a')
+  },
+  {
+    id: 'casa-botanico',
+    category: 'cha-casa',
+    name: 'Botânico Verde',
+    pageBg: 'bg-gradient-to-b from-[#eef1e8] to-white',
+    titleColor: 'text-[#46532f]',
+    accent: '#6b7d3e',
+    cardClass: 'bg-white/90 backdrop-blur ring-1 ring-[#d4dcbf]',
+    pattern: botanicalPattern('%236b7d3e', '%23a0b070')
+  },
+  {
+    id: 'casa-marfim',
+    category: 'cha-casa',
+    name: 'Marfim',
+    pageBg: 'bg-gradient-to-b from-[#f6f5f1] to-white',
+    titleColor: 'text-[#44413b]',
+    accent: '#57534e',
+    cardClass: 'bg-white/90 backdrop-blur ring-1 ring-[#e2dfd7]',
+    pattern: dotsPattern('%23a8a29e', '%23d6d3cb')
+  },
+  {
+    id: 'casa-mediterraneo',
+    category: 'cha-casa',
+    name: 'Mediterrâneo',
+    pageBg: 'bg-gradient-to-b from-[#eaf2f5] to-white',
+    titleColor: 'text-[#2f5a6b]',
+    accent: '#2f7f96',
+    cardClass: 'bg-white/90 backdrop-blur ring-1 ring-[#c8e0e6]',
+    pattern: wavesPattern('%232f7f96', '%237cb4c4')
+  },
+  {
+    id: 'casa-folhagem',
+    category: 'cha-casa',
+    name: 'Folhagem',
+    pageBg: 'bg-gradient-to-b from-[#ecf3ec] to-white',
+    titleColor: 'text-[#2f5a3a]',
+    accent: '#3f7d4e',
+    cardClass: 'bg-white/90 backdrop-blur ring-1 ring-[#cce0cc]',
+    pattern: leavesPattern('%233f7d4e', '%2370a880')
+  },
+  {
+    id: 'casa-terracota',
+    category: 'cha-casa',
+    name: 'Terracota',
+    pageBg: 'bg-gradient-to-b from-[#f8ede7] to-white',
+    titleColor: 'text-[#7a3f28]',
+    accent: '#c2683f',
+    cardClass: 'bg-white/90 backdrop-blur ring-1 ring-[#ecd0c2]',
+    pattern: dotsPattern('%23c2683f', '%23d99a78')
+  },
+  {
+    id: 'casa-moderno',
+    category: 'cha-casa',
+    name: 'Moderno',
+    pageBg: 'bg-gradient-to-b from-[#f3f1ec] to-white',
+    titleColor: 'text-[#4a4136]',
+    accent: '#a86a2e',
+    cardClass: 'bg-white/90 backdrop-blur ring-1 ring-[#e0d8c8]',
+    pattern: confettiPattern('%23a86a2e', '%23c89a5e')
+  },
+
+  // ---- Aniversário (adulto) ----------------------------------------------
+  {
+    id: 'aniv-confete-chic',
+    category: 'aniversario',
+    name: 'Confete Chic',
+    pageBg: 'bg-gradient-to-b from-[#eef0f5] to-white',
+    titleColor: 'text-[#2c3a5a]',
+    accent: '#c2a14a',
+    cardClass: 'bg-white/90 backdrop-blur ring-1 ring-[#cfd6e4]',
+    pattern: confettiPattern('%23c2a14a', '%232c3a5a')
+  },
+  {
+    id: 'aniv-moderno',
+    category: 'aniversario',
+    name: 'Moderno',
+    pageBg: 'bg-gradient-to-b from-[#f6f3f1] to-white',
+    titleColor: 'text-[#3f3a36]',
+    accent: '#e2574c',
+    cardClass: 'bg-white/90 backdrop-blur ring-1 ring-[#e4dcd6]',
+    pattern: dotsPattern('%23e2574c', '%23f0a59e')
+  },
+  {
+    id: 'aniv-noite',
+    category: 'aniversario',
+    name: 'Noite',
+    pageBg: 'bg-gradient-to-b from-[#ece9f4] to-white',
+    titleColor: 'text-[#3f3460]',
+    accent: '#8b4ad8',
+    cardClass: 'bg-white/90 backdrop-blur ring-1 ring-[#d6ccec]',
+    pattern: confettiPattern('%238b4ad8', '%23c08ae0')
+  },
+  {
+    id: 'aniv-tropical',
+    category: 'aniversario',
+    name: 'Tropical',
+    pageBg: 'bg-gradient-to-b from-[#eef4ea] to-white',
+    titleColor: 'text-[#3f5a36]',
+    accent: '#db6a4a',
+    cardClass: 'bg-white/90 backdrop-blur ring-1 ring-[#d4e2c8]',
+    pattern: leavesPattern('%233f7d4e', '%23db6a4a')
+  },
+  {
+    id: 'aniv-pessego',
+    category: 'aniversario',
+    name: 'Pêssego',
+    pageBg: 'bg-gradient-to-b from-[#fdf0e8] to-white',
+    titleColor: 'text-[#7a4a30]',
+    accent: '#e08a5a',
+    cardClass: 'bg-white/90 backdrop-blur ring-1 ring-[#f2d8c4]',
+    pattern: confettiPattern('%23e08a5a', '%23f0b58e')
+  },
+  {
+    id: 'aniv-blacktie',
+    category: 'aniversario',
+    name: 'Black Tie',
+    pageBg: 'bg-gradient-to-b from-[#f1f0ee] to-white',
+    titleColor: 'text-[#33302a]',
+    accent: '#b89030',
+    cardClass: 'bg-white/90 backdrop-blur ring-1 ring-[#ddd8cc]',
+    pattern: confettiPattern('%23b89030', '%2333302a')
+  },
+  {
+    id: 'aniv-festa',
+    category: 'aniversario',
+    name: 'Festa Colorida',
+    pageBg: 'bg-gradient-to-b from-[#fbeef4] to-white',
+    titleColor: 'text-[#7a3a5a]',
+    accent: '#e24b8a',
+    cardClass: 'bg-white/90 backdrop-blur ring-1 ring-[#f2d0e0]',
+    pattern: confettiPattern('%23e24b8a', '%23f0a5c4')
+  },
+
+  // ---- Infantil (os 7 melhores, com as artes originais) -------------------
   {
     id: 'unicornio',
+    category: 'infantil',
     name: 'Unicórnio Mágico',
     pageBg: 'bg-gradient-to-b from-pink-100 via-violet-50 to-sky-50',
     titleColor: 'text-pink-900',
@@ -1005,7 +1251,68 @@ export const THEMES: Theme[] = [
     Decoration: UnicornDeco
   },
   {
+    id: 'espaco',
+    category: 'infantil',
+    name: 'Aventura Espacial',
+    pageBg: 'bg-gradient-to-b from-violet-200 via-indigo-100 to-white',
+    titleColor: 'text-indigo-900',
+    accent: '#6d28d9',
+    cardClass: 'bg-white/90 backdrop-blur ring-1 ring-indigo-200',
+    pattern: galaxyPattern('%236d28d9', '%23fbbf24'),
+    HeroArt: EspacoHero,
+    Decoration: PlanetDeco
+  },
+  {
+    id: 'super-heroi',
+    category: 'infantil',
+    name: 'Super Herói',
+    pageBg: 'bg-gradient-to-b from-blue-100 via-red-50 to-white',
+    titleColor: 'text-red-900',
+    accent: '#dc2626',
+    cardClass: 'bg-white/90 backdrop-blur ring-1 ring-red-200',
+    pattern: comicPattern('%23dc2626', '%23fde047'),
+    HeroArt: SuperHeroiHero,
+    Decoration: ShieldDeco
+  },
+  {
+    id: 'dinos',
+    category: 'infantil',
+    name: 'Dino Aventura',
+    pageBg: 'bg-gradient-to-b from-orange-100 via-amber-50 to-lime-50',
+    titleColor: 'text-green-900',
+    accent: '#15803d',
+    cardClass: 'bg-white/90 backdrop-blur ring-1 ring-green-200',
+    pattern: leavesPattern('%2315803d', '%237c2d12'),
+    HeroArt: DinosHero,
+    Decoration: DinoDeco
+  },
+  {
+    id: 'reino-do-mar',
+    category: 'infantil',
+    name: 'Reino do Mar',
+    pageBg: 'bg-gradient-to-b from-cyan-100 via-teal-50 to-white',
+    titleColor: 'text-teal-900',
+    accent: '#0d9488',
+    cardClass: 'bg-white/90 backdrop-blur ring-1 ring-teal-200',
+    pattern: wavesPattern('%230d9488', '%2306b6d4'),
+    HeroArt: ReinoMarHero,
+    Decoration: ShellDeco
+  },
+  {
+    id: 'safari',
+    category: 'infantil',
+    name: 'Safari Aventura',
+    pageBg: 'bg-gradient-to-b from-amber-100 via-yellow-50 to-orange-50',
+    titleColor: 'text-amber-900',
+    accent: '#ca8a04',
+    cardClass: 'bg-white/90 backdrop-blur ring-1 ring-amber-200',
+    pattern: leavesPattern('%2315803d', '%2365a30d'),
+    HeroArt: SafariHero,
+    Decoration: LionDeco
+  },
+  {
     id: 'piratas',
+    category: 'infantil',
     name: 'Aventura Pirata',
     pageBg: 'bg-gradient-to-b from-amber-100 via-orange-50 to-cyan-50',
     titleColor: 'text-amber-900',
@@ -1017,6 +1324,73 @@ export const THEMES: Theme[] = [
   }
 ];
 
+/**
+ * Temas antigos que saíram do picker mas ainda são usados por eventos já criados.
+ * Não aparecem na seleção; servem só pra `getTheme` não quebrar a aparência deles.
+ */
+const LEGACY_THEMES: Theme[] = [
+  {
+    id: 'infantil-rosa',
+    category: 'infantil',
+    name: 'Infantil Rosa',
+    pageBg: 'bg-gradient-to-b from-pink-100 via-rose-50 to-white',
+    titleColor: 'text-pink-900',
+    accent: '#ec4899',
+    cardClass: 'bg-white/90 backdrop-blur ring-1 ring-pink-200',
+    pattern: dotsPattern('%23ec4899', '%23fb7185'),
+    HeroArt: BalloonsRosa,
+    Decoration: BalloonsRosaDeco
+  },
+  {
+    id: 'infantil-azul',
+    category: 'infantil',
+    name: 'Infantil Azul',
+    pageBg: 'bg-gradient-to-b from-sky-100 via-blue-50 to-white',
+    titleColor: 'text-sky-900',
+    accent: '#0284c7',
+    cardClass: 'bg-white/90 backdrop-blur ring-1 ring-sky-200',
+    pattern: cloudsPattern('%230284c7', '%233b82f6'),
+    HeroArt: BalloonsAzul,
+    Decoration: BalloonsAzulDeco
+  },
+  {
+    id: 'reino-encantado',
+    category: 'infantil',
+    name: 'Reino Encantado',
+    pageBg: 'bg-gradient-to-b from-pink-100 via-rose-50 to-amber-50',
+    titleColor: 'text-rose-900',
+    accent: '#db2777',
+    cardClass: 'bg-white/90 backdrop-blur ring-1 ring-rose-200',
+    pattern: heartsStarsPattern('%23ec4899', '%23fbbf24'),
+    HeroArt: ReinoEncantadoHero,
+    Decoration: CrownDeco
+  },
+  {
+    id: 'reino-gelado',
+    category: 'infantil',
+    name: 'Reino Gelado',
+    pageBg: 'bg-gradient-to-b from-sky-100 via-cyan-50 to-violet-50',
+    titleColor: 'text-cyan-900',
+    accent: '#0e7490',
+    cardClass: 'bg-white/90 backdrop-blur ring-1 ring-cyan-200',
+    pattern: snowflakesPattern('%230e7490', '%237dd3fc'),
+    HeroArt: ReinoGeladoHero,
+    Decoration: SnowflakeDeco
+  },
+  {
+    id: 'carros-pista',
+    category: 'infantil',
+    name: 'Carros & Pista',
+    pageBg: 'bg-gradient-to-b from-red-100 via-orange-50 to-white',
+    titleColor: 'text-red-900',
+    accent: '#dc2626',
+    cardClass: 'bg-white/90 backdrop-blur ring-1 ring-red-200',
+    pattern: checkeredPattern('%23dc2626'),
+    HeroArt: CarrosHero,
+    Decoration: RaceDeco
+  }
+];
+
 export function getTheme(id?: string | null): Theme {
-  return THEMES.find((t) => t.id === id) ?? THEMES[0];
+  return [...THEMES, ...LEGACY_THEMES].find((t) => t.id === id) ?? THEMES[0];
 }

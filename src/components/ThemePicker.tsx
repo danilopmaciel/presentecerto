@@ -2,7 +2,7 @@
 
 import { useOptimistic, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
-import { THEMES } from '@/lib/themes';
+import { THEMES, THEME_CATEGORIES, getTheme, type ThemeCategory } from '@/lib/themes';
 import { CustomThemeEditor } from './CustomThemeEditor';
 import { AiImageModal } from './AiImageModal';
 import { extractPalette, type Palette } from '@/lib/colors';
@@ -51,6 +51,11 @@ export function ThemePicker({
   const [aiOpen, setAiOpen] = useState(false);
   const [aiSaving, setAiSaving] = useState(false);
   const [aiError, setAiError] = useState<string | null>(null);
+
+  // Aba ativa de temas (por ocasião). Começa na categoria do tema atual.
+  const [activeTab, setActiveTab] = useState<ThemeCategory>(
+    () => getTheme(currentTheme).category ?? 'casamento'
+  );
 
   // Quando a IA devolve uma imagem, aplica direto como tema personalizado:
   // extrai a paleta e salva via onSaveCustom.
@@ -107,6 +112,24 @@ export function ThemePicker({
 
   return (
     <div className="mt-4 space-y-4">
+      {/* Abas por ocasião */}
+      <div className="flex flex-wrap gap-1.5 border-b border-gray-200 pb-2">
+        {THEME_CATEGORIES.map((c) => (
+          <button
+            key={c.id}
+            type="button"
+            onClick={() => setActiveTab(c.id)}
+            className={`rounded-full px-3 py-1.5 text-xs font-medium transition ${
+              activeTab === c.id
+                ? 'bg-brand-500 text-white shadow'
+                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+            }`}
+          >
+            {c.label}
+          </button>
+        ))}
+      </div>
+
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
         {/* Card "Criar com IA" — primeira opção do temático */}
         {aiEnabled && customEnabled && (
@@ -134,7 +157,7 @@ export function ThemePicker({
           </button>
         )}
 
-        {THEMES.map((t) => {
+        {THEMES.filter((t) => !t.category || t.category === activeTab).map((t) => {
           const selected = optimisticTheme === t.id;
           return (
             <button
