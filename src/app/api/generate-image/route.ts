@@ -91,7 +91,7 @@ export async function POST(request: Request) {
 
   const { data: ev } = await supabase
     .from('events')
-    .select('id, owner_id, plan_tier, ai_generations_used')
+    .select('id, owner_id, plan_tier, ai_generations_used, ai_generations_limit')
     .eq('id', eventId)
     .single();
   if (!ev || ev.owner_id !== user.id) {
@@ -103,22 +103,22 @@ export async function POST(request: Request) {
       { status: 403 }
     );
   }
+  const limit = ev.ai_generations_limit ?? MAX_PER_EVENT;
   const usedSoFar = ev.ai_generations_used ?? 0;
-  if (usedSoFar >= MAX_PER_EVENT) {
+  if (usedSoFar >= limit) {
     return NextResponse.json(
-      { error: `Limite de ${MAX_PER_EVENT} gerações por evento atingido.` },
+      { error: `Limite de ${limit} gerações atingido. Você pode solicitar mais ao suporte.`, limit_reached: true },
       { status: 429 }
     );
   }
 
-  // Sufixo de segurança/qualidade no prompt
+  // Estilo livre (realista OU ilustrado, conforme o prompt do anfitrião).
+  // Mantemos só o mínimo: uso como capa/fundo + guarda-corpos legais.
   const fullPrompt = [
-    'Gere uma imagem ilustrada para uma página de aniversário infantil:',
     prompt,
     '',
-    'Estilo: ilustração colorida, alegre, infantil, sem texto sobreposto.',
-    'Sem rostos humanos reconhecíveis. Sem personagens com copyright.',
-    'Composição limpa que funciona como capa/fundo de site.'
+    'A imagem será a capa/fundo de uma página de evento: composição limpa e equilibrada, sem texto sobreposto.',
+    'Não inclua personagens, marcas ou logotipos protegidos por copyright, nem rostos de pessoas reais reconhecíveis.'
   ].join('\n');
 
   // Chama o Gemini — tenta cada modelo em ordem; 404 num modelo pula pro próximo.
@@ -282,7 +282,7 @@ export async function POST(request: Request) {
     ok: true,
     image_url: pub.publicUrl,
     used: usedSoFar + 1,
-    limit: MAX_PER_EVENT,
-    remaining: MAX_PER_EVENT - (usedSoFar + 1)
+    limit,
+    remaining: limit - (usedSoFar + 1)
   });
 }
