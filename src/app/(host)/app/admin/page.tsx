@@ -60,12 +60,20 @@ export default async function AdminPage() {
     .eq('status', 'refund_requested')
     .order('refund_requested_at', { ascending: true });
 
+  // Pedidos de mais créditos de IA
+  const { data: pendingAiCredits } = await admin
+    .from('events')
+    .select('id, title, owner_id, ai_generations_used, ai_generations_limit, ai_extra_requested_at')
+    .not('ai_extra_requested_at', 'is', null)
+    .order('ai_extra_requested_at', { ascending: true });
+
   // Resolve nome/email dos donos
   const ownerIds = Array.from(
     new Set([
       ...(pending ?? []).map((e) => e.owner_id),
       ...(recentPaid ?? []).map((e) => e.owner_id),
-      ...(pendingRefunds ?? []).map((c) => c.user_id)
+      ...(pendingRefunds ?? []).map((c) => c.user_id),
+      ...(pendingAiCredits ?? []).map((e) => e.owner_id)
     ])
   );
   const { data: profiles } = ownerIds.length
@@ -182,6 +190,51 @@ export default async function AdminPage() {
       .eq('id', creditId);
     revalidatePath('/app/admin');
     revalidatePath('/app/conta');
+  }
+
+  async function grantAiCredits(formData: FormData) {
+    'use server';
+    const supabase = await createClient();
+    const {
+      data: { user }
+    } = await supabase.auth.getUser();
+    if (!user || !isAdminEmail(user.email)) return;
+
+    const eventId = String(formData.get('event_id') ?? '');
+    if (!eventId) return;
+
+    const adminCli = createAdminClient();
+    const { data: ev } = await adminCli
+      .from('events')
+      .select('ai_generations_limit')
+      .eq('id', eventId)
+      .single();
+    const current = ev?.ai_generations_limit ?? 5;
+    await adminCli
+      .from('events')
+      .update({ ai_generations_limit: current + 5, ai_extra_requested_at: null })
+      .eq('id', eventId);
+    revalidatePath('/app/admin');
+    revalidatePath(`/app/eventos/${eventId}`);
+  }
+
+  async function denyAiCredits(formData: FormData) {
+    'use server';
+    const supabase = await createClient();
+    const {
+      data: { user }
+    } = await supabase.auth.getUser();
+    if (!user || !isAdminEmail(user.email)) return;
+
+    const eventId = String(formData.get('event_id') ?? '');
+    if (!eventId) return;
+
+    const adminCli = createAdminClient();
+    await adminCli
+      .from('events')
+      .update({ ai_extra_requested_at: null })
+      .eq('id', eventId);
+    revalidatePath('/app/admin');
   }
 
   // ---- Render -------------------------------------------------------------
@@ -323,6 +376,59 @@ export default async function AdminPage() {
                     </form>
                     <form action={denyRefund}>
                       <input type="hidden" name="credit_id" value={c.id} />
+                      <button className="rounded-md border border-gray-300 bg-white px-3 py-1.5 text-xs text-gray-700 hover:bg-gray-50">
+                        Negar
+                      </button>
+                    </form>
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+        </section>
+      )}
+
+      {/* Pedidos de mais créditos de IA */}
+      {pendingAiCredits && pendingAiCredits.length > 0 && (
+        <section>
+          <h2 className="text-lg font-semibold">Pedidos de créditos de IA</h2>
+          <ul className="mt-2 divide-y divide-purple-200 rounded-md border border-purple-300 bg-purple-50">
+            {pendingAiCredits.map((e) => {
+              const prof = profById.get(e.owner_id);
+              const used = e.ai_generations_used ?? 0;
+              const lim = e.ai_generations_limit ?? 5;
+              return (
+                <li key={e.id} className="flex flex-wrap items-start justify-between gap-3 p-4">
+                  <div className="min-w-0 flex-1">
+                    <Link
+                      href={`/app/eventos/${e.id}`}
+                      className="font-medium text-brand-700 hover:underline"
+                    >
+                      {e.title}
+                    </Link>
+                    <div className="mt-0.5 text-xs text-gray-700">
+                      {prof?.full_name ?? 'sem nome'} · usou{' '}
+                      <strong>
+                        {used}/{lim}
+                      </strong>{' '}
+                      gerações
+                    </div>
+                    <div className="mt-0.5 text-[11px] text-gray-500">
+                      Pedido em{' '}
+                      {e.ai_extra_requested_at
+                        ? new Date(e.ai_extra_requested_at).toLocaleString('pt-BR')
+                        : '—'}
+                    </div>
+                  </div>
+                  <div className="flex shrink-0 gap-2">
+                    <form action={grantAiCredits}>
+                      <input type="hidden" name="event_id" value={e.id} />
+                      <button className="rounded-md bg-purple-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-purple-700">
+                        ✨ Liberar +5
+                      </button>
+                    </form>
+                    <form action={denyAiCredits}>
+                      <input type="hidden" name="event_id" value={e.id} />
                       <button className="rounded-md border border-gray-300 bg-white px-3 py-1.5 text-xs text-gray-700 hover:bg-gray-50">
                         Negar
                       </button>

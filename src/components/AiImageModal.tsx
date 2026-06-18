@@ -32,6 +32,9 @@ export function AiImageModal({ open, onClose, onPick, scope, eventId }: Props) {
   const [prompt, setPrompt] = useState('');
   const [generating, setGenerating] = useState(false);
   const [error, setError] = useState<{ msg: string; helpUrl?: string } | null>(null);
+  const [limitReached, setLimitReached] = useState(false);
+  const [requesting, setRequesting] = useState(false);
+  const [requested, setRequested] = useState(false);
   const [result, setResult] = useState<{
     url: string;
     used: number;
@@ -67,6 +70,7 @@ export function AiImageModal({ open, onClose, onPick, scope, eventId }: Props) {
           msg: json.error ?? 'Falha na geração.',
           helpUrl: json.help_url
         });
+        if (json.limit_reached) setLimitReached(true);
         return;
       }
       setResult({
@@ -88,13 +92,48 @@ export function AiImageModal({ open, onClose, onPick, scope, eventId }: Props) {
     handleClose();
   }
 
+  async function requestMore() {
+    if (!eventId || requesting || requested) return;
+    setRequesting(true);
+    try {
+      const res = await fetch('/api/ai-credits/request', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ event_id: eventId })
+      });
+      if (res.ok) setRequested(true);
+    } catch {
+      // silencioso — botão volta a ficar disponível
+    } finally {
+      setRequesting(false);
+    }
+  }
+
   function handleClose() {
     setPrompt('');
     setResult(null);
     setError(null);
     setGenerating(false);
+    setLimitReached(false);
+    setRequesting(false);
+    setRequested(false);
     onClose();
   }
+
+  const requestButton = (
+    <button
+      type="button"
+      onClick={requestMore}
+      disabled={requesting || requested}
+      className="w-full rounded-md border border-purple-300 bg-purple-50 px-4 py-2 text-sm font-medium text-purple-700 hover:bg-purple-100 disabled:opacity-70"
+    >
+      {requested
+        ? '✓ Pedido enviado — o suporte vai liberar mais créditos'
+        : requesting
+          ? 'Enviando pedido...'
+          : '✨ Solicitar mais créditos de IA'}
+    </button>
+  );
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
@@ -176,6 +215,8 @@ export function AiImageModal({ open, onClose, onPick, scope, eventId }: Props) {
               </div>
             )}
 
+            {limitReached && <div className="mt-3">{requestButton}</div>}
+
             <div className="mt-4 flex gap-2">
               <button
                 type="button"
@@ -195,7 +236,7 @@ export function AiImageModal({ open, onClose, onPick, scope, eventId }: Props) {
             </div>
 
             <p className="mt-3 text-[10px] text-gray-500">
-              Limite: 5 imagens por evento. Funciona só no plano Temático.
+              Há um limite de gerações por evento. Acabou? Dá pra solicitar mais. Funciona só no plano Temático.
             </p>
           </>
         )}
@@ -216,6 +257,7 @@ export function AiImageModal({ open, onClose, onPick, scope, eventId }: Props) {
               </span>
               <span>Sobram {result.remaining} ✨</span>
             </div>
+            {result.remaining <= 0 && requestButton}
             <div className="flex gap-2">
               <button
                 type="button"
