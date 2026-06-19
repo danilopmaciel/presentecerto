@@ -936,6 +936,144 @@ const StarsDeco: React.FC = () => (
 );
 
 // ============================================================================
+// HERO ARTS ELEGANTES (fábricas por cor — temas adultos)
+// ============================================================================
+
+const HERO_CLS = 'pointer-events-none mx-auto mb-2 h-32 w-full sm:h-40';
+
+// Arco de eucalipto (casamento botânico, folhagem, tropical...)
+const botanicalArchHero = (c1: string, c2: string): React.FC => {
+  const L: [number, number, number][] = [
+    [66, 128, 38], [73, 110, 52], [83, 93, 36], [96, 78, 56], [112, 65, 40],
+    [131, 55, 58], [152, 49, 42], [175, 46, 60]
+  ];
+  const Comp: React.FC = () => (
+    <svg aria-hidden className={HERO_CLS} viewBox="0 0 400 160" preserveAspectRatio="xMidYMid meet" xmlns="http://www.w3.org/2000/svg">
+      <path d="M58 152 Q64 70 200 44" stroke={c1} strokeWidth="2" fill="none" opacity="0.55" />
+      <path d="M342 152 Q336 70 200 44" stroke={c1} strokeWidth="2" fill="none" opacity="0.55" />
+      {L.map(([x, y, a], i) => (
+        <g key={i}>
+          <ellipse cx={x} cy={y} rx="6.5" ry="3" fill={c2} opacity="0.7" transform={`rotate(${a} ${x} ${y})`} />
+          <ellipse cx={400 - x} cy={y} rx="6.5" ry="3" fill={c2} opacity="0.7" transform={`rotate(${-a} ${400 - x} ${y})`} />
+        </g>
+      ))}
+      <circle cx="200" cy="45" r="3.5" fill={c1} opacity="0.65" />
+    </svg>
+  );
+  return Comp;
+};
+
+// Buquê floral (romântico, lavanda, rosé...)
+const floralSprayHero = (c1: string, c2: string): React.FC => {
+  const F: [number, number, number][] = [
+    [108, 62, 1.1], [160, 45, 1.45], [225, 49, 1.2], [288, 60, 1.0], [196, 82, 0.95]
+  ];
+  const petals = (cx: number, cy: number, s: number) =>
+    [0, 72, 144, 216, 288].map((deg) => {
+      const r = (deg * Math.PI) / 180;
+      return (
+        <circle key={deg} cx={cx + Math.cos(r) * 5 * s} cy={cy + Math.sin(r) * 5 * s} r={3.4 * s} fill={c1} opacity="0.55" />
+      );
+    });
+  const Comp: React.FC = () => (
+    <svg aria-hidden className={HERO_CLS} viewBox="0 0 400 160" preserveAspectRatio="xMidYMid meet" xmlns="http://www.w3.org/2000/svg">
+      <path d="M108 62 Q150 115 200 122 Q250 115 288 60" stroke={c1} strokeWidth="1.4" fill="none" opacity="0.35" />
+      {F.map(([x, y, s], i) => (
+        <g key={i}>
+          {petals(x, y, s)}
+          <circle cx={x} cy={y} r={2.4 * s} fill={c2} />
+        </g>
+      ))}
+    </svg>
+  );
+  return Comp;
+};
+
+// Confete + serpentinas (dourado, confete chic, festa...)
+const confettiHero = (c1: string, c2: string): React.FC => {
+  const bits: [number, number, number, string][] = [
+    [60, 40, 20, c1], [110, 60, -15, c2], [160, 34, 30, c1], [210, 54, -25, c2],
+    [260, 42, 18, c1], [310, 60, -30, c2], [340, 38, 25, c1], [90, 96, 40, c2],
+    [180, 102, -20, c1], [270, 96, 35, c2], [150, 76, 10, c2], [240, 78, -12, c1]
+  ];
+  const Comp: React.FC = () => (
+    <svg aria-hidden className={HERO_CLS} viewBox="0 0 400 160" preserveAspectRatio="xMidYMid meet" xmlns="http://www.w3.org/2000/svg">
+      <path d="M28 8 Q72 40 58 92" stroke={c1} strokeWidth="2" fill="none" opacity="0.45" />
+      <path d="M372 8 Q328 40 342 92" stroke={c2} strokeWidth="2" fill="none" opacity="0.45" />
+      {bits.map(([x, y, r, f], i) => (
+        <rect key={i} x={x} y={y} width="9" height="4" rx="1" fill={f} opacity="0.7" transform={`rotate(${r} ${x} ${y})`} />
+      ))}
+    </svg>
+  );
+  return Comp;
+};
+
+// Lua + estrelas (estrelinha, noite, azul sereno...)
+const celestialHero = (c1: string, c2: string): React.FC => {
+  const stars: [number, number, number][] = [
+    [85, 50, 1], [140, 34, 0.7], [300, 46, 1.1], [332, 82, 0.8], [62, 96, 0.7], [250, 70, 0.8]
+  ];
+  const Comp: React.FC = () => (
+    <svg aria-hidden className={HERO_CLS} viewBox="0 0 400 160" preserveAspectRatio="xMidYMid meet" xmlns="http://www.w3.org/2000/svg">
+      <path d="M210 38 A24 24 0 1 0 210 86 A18 18 0 1 1 210 38 Z" fill={c1} opacity="0.5" />
+      {stars.map(([x, y, s], i) => (
+        <path
+          key={i}
+          d={`M${x} ${y - 6 * s} l${1.6 * s} ${4 * s} l${4 * s} 0 l${-3.2 * s} ${2.8 * s} l${1.2 * s} ${4 * s} l${-3.6 * s} ${-2.6 * s} l${-3.6 * s} ${2.6 * s} l${1.2 * s} ${-4 * s} l${-3.2 * s} ${-2.8 * s} l${4 * s} 0 z`}
+          fill={c2}
+          opacity="0.7"
+        />
+      ))}
+    </svg>
+  );
+  return Comp;
+};
+
+// Nuvens suaves (chá de bebê neutro, ursinho...)
+const cloudsHero = (c1: string, c2: string): React.FC => {
+  const Comp: React.FC = () => (
+    <svg aria-hidden className={HERO_CLS} viewBox="0 0 400 160" preserveAspectRatio="xMidYMid meet" xmlns="http://www.w3.org/2000/svg">
+      <g fill={c1} opacity="0.38">
+        <ellipse cx="130" cy="58" rx="38" ry="17" />
+        <ellipse cx="106" cy="52" rx="24" ry="15" />
+        <ellipse cx="158" cy="53" rx="26" ry="14" />
+      </g>
+      <g fill={c2} opacity="0.32">
+        <ellipse cx="285" cy="88" rx="32" ry="14" />
+        <ellipse cx="266" cy="83" rx="21" ry="12" />
+        <ellipse cx="306" cy="84" rx="21" ry="11" />
+      </g>
+      <circle cx="210" cy="40" r="2.6" fill={c1} opacity="0.5" />
+      <circle cx="240" cy="55" r="2" fill={c2} opacity="0.5" />
+      <circle cx="80" cy="95" r="2.2" fill={c1} opacity="0.45" />
+    </svg>
+  );
+  return Comp;
+};
+
+// Art-déco / sunburst (clássico, mediterrâneo, terracota...)
+const archDecoHero = (c1: string, c2: string): React.FC => {
+  const rays = [-60, -40, -20, 0, 20, 40, 60];
+  const Comp: React.FC = () => (
+    <svg aria-hidden className={HERO_CLS} viewBox="0 0 400 160" preserveAspectRatio="xMidYMid meet" xmlns="http://www.w3.org/2000/svg">
+      <g fill="none" stroke={c1} strokeWidth="2" opacity="0.45">
+        <path d="M120 150 A80 80 0 0 1 280 150" />
+        <path d="M142 150 A58 58 0 0 1 258 150" />
+        <path d="M164 150 A36 36 0 0 1 236 150" />
+      </g>
+      <g stroke={c2} strokeWidth="1.4" opacity="0.4">
+        {rays.map((deg, i) => {
+          const r = ((deg - 90) * Math.PI) / 180;
+          return <line key={i} x1="200" y1="150" x2={200 + Math.cos(r) * 92} y2={150 + Math.sin(r) * 92} />;
+        })}
+      </g>
+      <circle cx="200" cy="150" r="4" fill={c1} opacity="0.6" />
+    </svg>
+  );
+  return Comp;
+};
+
+// ============================================================================
 // DEFINIÇÃO DOS TEMAS
 // ============================================================================
 
@@ -958,7 +1096,8 @@ export const THEMES: Theme[] = [
     titleColor: 'text-[#43503c]',
     accent: '#6b7d5e',
     cardClass: 'bg-white/90 backdrop-blur ring-1 ring-[#d3dcc8]',
-    pattern: botanicalPattern('%236b7d5e', '%23a3b18a')
+    pattern: botanicalPattern('%236b7d5e', '%23a3b18a'),
+    HeroArt: botanicalArchHero('#6b7d5e', '#a3b18a')
   },
   {
     id: 'casamento-romantico',
@@ -968,17 +1107,8 @@ export const THEMES: Theme[] = [
     titleColor: 'text-[#7a4a52]',
     accent: '#c98a9a',
     cardClass: 'bg-white/90 backdrop-blur ring-1 ring-[#f0d4d8]',
-    pattern: floralPattern('%23c98a9a', '%23e7b8be')
-  },
-  {
-    id: 'casamento-minimalista',
-    category: 'casamento',
-    name: 'Minimalista',
-    pageBg: 'bg-gradient-to-b from-[#f6f5f2] to-white',
-    titleColor: 'text-[#3f3c38]',
-    accent: '#57534e',
-    cardClass: 'bg-white/90 backdrop-blur ring-1 ring-[#e2dfd9]',
-    pattern: dotsPattern('%23a8a29e', '%23d6d3cd')
+    pattern: floralPattern('%23c98a9a', '%23e7b8be'),
+    HeroArt: floralSprayHero('#c98a9a', '#e7b8be')
   },
   {
     id: 'casamento-dourado',
@@ -988,7 +1118,8 @@ export const THEMES: Theme[] = [
     titleColor: 'text-[#6e5a26]',
     accent: '#b8902e',
     cardClass: 'bg-white/90 backdrop-blur ring-1 ring-[#ecdfc0]',
-    pattern: confettiPattern('%23b8902e', '%23d9bd6e')
+    pattern: confettiPattern('%23b8902e', '%23d9bd6e'),
+    HeroArt: confettiHero('#b8902e', '#d9bd6e')
   },
   {
     id: 'casamento-lavanda',
@@ -998,17 +1129,8 @@ export const THEMES: Theme[] = [
     titleColor: 'text-[#544a6b]',
     accent: '#8b7aa8',
     cardClass: 'bg-white/90 backdrop-blur ring-1 ring-[#ddd5ec]',
-    pattern: floralPattern('%238b7aa8', '%23c3b6dd')
-  },
-  {
-    id: 'casamento-boho',
-    category: 'casamento',
-    name: 'Boho',
-    pageBg: 'bg-gradient-to-b from-[#f7efe7] to-white',
-    titleColor: 'text-[#6e4a36]',
-    accent: '#b56b4a',
-    cardClass: 'bg-white/90 backdrop-blur ring-1 ring-[#e7d3c2]',
-    pattern: leavesPattern('%23a3784f', '%23c08a5e')
+    pattern: floralPattern('%238b7aa8', '%23c3b6dd'),
+    HeroArt: floralSprayHero('#8b7aa8', '#c3b6dd')
   },
   {
     id: 'casamento-classico',
@@ -1018,7 +1140,8 @@ export const THEMES: Theme[] = [
     titleColor: 'text-[#2a3b5e]',
     accent: '#2a3b5e',
     cardClass: 'bg-white/90 backdrop-blur ring-1 ring-[#cdd6e6]',
-    pattern: dotsPattern('%232a3b5e', '%237b8aa8')
+    pattern: dotsPattern('%232a3b5e', '%237b8aa8'),
+    HeroArt: archDecoHero('#2a3b5e', '#7b8aa8')
   },
 
   // ---- Chá de bebê --------------------------------------------------------
@@ -1030,17 +1153,8 @@ export const THEMES: Theme[] = [
     titleColor: 'text-[#4a5340]',
     accent: '#8a9a73',
     cardClass: 'bg-white/90 backdrop-blur ring-1 ring-[#d6dcca]',
-    pattern: cloudsPattern('%238a9a73', '%23b3bf9c')
-  },
-  {
-    id: 'bebe-sonho',
-    category: 'cha-bebe',
-    name: 'Sonho',
-    pageBg: 'bg-gradient-to-b from-[#f3eff8] to-white',
-    titleColor: 'text-[#574a6b]',
-    accent: '#a08fc4',
-    cardClass: 'bg-white/90 backdrop-blur ring-1 ring-[#ddd4ec]',
-    pattern: dotsPattern('%23a08fc4', '%23cfc4e6')
+    pattern: cloudsPattern('%238a9a73', '%23b3bf9c'),
+    HeroArt: cloudsHero('#8a9a73', '#b3bf9c')
   },
   {
     id: 'bebe-estrelinha',
@@ -1050,7 +1164,8 @@ export const THEMES: Theme[] = [
     titleColor: 'text-[#3f4670]',
     accent: '#6b76b8',
     cardClass: 'bg-white/90 backdrop-blur ring-1 ring-[#d2d8ee]',
-    pattern: starsPattern('%236b76b8', '%23a8b0dd')
+    pattern: starsPattern('%236b76b8', '%23a8b0dd'),
+    HeroArt: celestialHero('#6b76b8', '#a8b0dd')
   },
   {
     id: 'bebe-ursinho',
@@ -1060,7 +1175,8 @@ export const THEMES: Theme[] = [
     titleColor: 'text-[#6b5236]',
     accent: '#a8773f',
     cardClass: 'bg-white/90 backdrop-blur ring-1 ring-[#e8d8c2]',
-    pattern: dotsPattern('%23a8773f', '%23cfa978')
+    pattern: dotsPattern('%23a8773f', '%23cfa978'),
+    HeroArt: cloudsHero('#a8773f', '#cfa978')
   },
   {
     id: 'bebe-rosa',
@@ -1070,7 +1186,8 @@ export const THEMES: Theme[] = [
     titleColor: 'text-[#7a4a58]',
     accent: '#cf8aa3',
     cardClass: 'bg-white/90 backdrop-blur ring-1 ring-[#f2d6de]',
-    pattern: heartsStarsPattern('%23cf8aa3', '%23e7b8c4')
+    pattern: heartsStarsPattern('%23cf8aa3', '%23e7b8c4'),
+    HeroArt: floralSprayHero('#cf8aa3', '#e7b8c4')
   },
   {
     id: 'bebe-azul',
@@ -1080,17 +1197,8 @@ export const THEMES: Theme[] = [
     titleColor: 'text-[#3a5a72]',
     accent: '#6f9cc0',
     cardClass: 'bg-white/90 backdrop-blur ring-1 ring-[#cfe0ec]',
-    pattern: cloudsPattern('%236f9cc0', '%23a8c8de')
-  },
-  {
-    id: 'bebe-arco-iris',
-    category: 'cha-bebe',
-    name: 'Arco-íris Pastel',
-    pageBg: 'bg-gradient-to-b from-[#f4eff5] to-white',
-    titleColor: 'text-[#5a4a66]',
-    accent: '#b58fb0',
-    cardClass: 'bg-white/90 backdrop-blur ring-1 ring-[#e4d6e6]',
-    pattern: rainbowPattern('%23b58fb0', '%23e2a9b0')
+    pattern: cloudsPattern('%236f9cc0', '%23a8c8de'),
+    HeroArt: celestialHero('#6f9cc0', '#a8c8de')
   },
 
   // ---- Chá de casa nova ---------------------------------------------------
@@ -1102,7 +1210,8 @@ export const THEMES: Theme[] = [
     titleColor: 'text-[#6e4a36]',
     accent: '#b56b4a',
     cardClass: 'bg-white/90 backdrop-blur ring-1 ring-[#e7d3c0]',
-    pattern: leavesPattern('%23b56b4a', '%23c89a6a')
+    pattern: leavesPattern('%23b56b4a', '%23c89a6a'),
+    HeroArt: botanicalArchHero('#b56b4a', '#c89a6a')
   },
   {
     id: 'casa-botanico',
@@ -1112,17 +1221,8 @@ export const THEMES: Theme[] = [
     titleColor: 'text-[#46532f]',
     accent: '#6b7d3e',
     cardClass: 'bg-white/90 backdrop-blur ring-1 ring-[#d4dcbf]',
-    pattern: botanicalPattern('%236b7d3e', '%23a0b070')
-  },
-  {
-    id: 'casa-marfim',
-    category: 'cha-casa',
-    name: 'Marfim',
-    pageBg: 'bg-gradient-to-b from-[#f6f5f1] to-white',
-    titleColor: 'text-[#44413b]',
-    accent: '#57534e',
-    cardClass: 'bg-white/90 backdrop-blur ring-1 ring-[#e2dfd7]',
-    pattern: dotsPattern('%23a8a29e', '%23d6d3cb')
+    pattern: botanicalPattern('%236b7d3e', '%23a0b070'),
+    HeroArt: botanicalArchHero('#6b7d3e', '#a0b070')
   },
   {
     id: 'casa-mediterraneo',
@@ -1132,7 +1232,8 @@ export const THEMES: Theme[] = [
     titleColor: 'text-[#2f5a6b]',
     accent: '#2f7f96',
     cardClass: 'bg-white/90 backdrop-blur ring-1 ring-[#c8e0e6]',
-    pattern: wavesPattern('%232f7f96', '%237cb4c4')
+    pattern: wavesPattern('%232f7f96', '%237cb4c4'),
+    HeroArt: archDecoHero('#2f7f96', '#7cb4c4')
   },
   {
     id: 'casa-folhagem',
@@ -1142,7 +1243,8 @@ export const THEMES: Theme[] = [
     titleColor: 'text-[#2f5a3a]',
     accent: '#3f7d4e',
     cardClass: 'bg-white/90 backdrop-blur ring-1 ring-[#cce0cc]',
-    pattern: leavesPattern('%233f7d4e', '%2370a880')
+    pattern: leavesPattern('%233f7d4e', '%2370a880'),
+    HeroArt: botanicalArchHero('#3f7d4e', '#70a880')
   },
   {
     id: 'casa-terracota',
@@ -1152,17 +1254,8 @@ export const THEMES: Theme[] = [
     titleColor: 'text-[#7a3f28]',
     accent: '#c2683f',
     cardClass: 'bg-white/90 backdrop-blur ring-1 ring-[#ecd0c2]',
-    pattern: dotsPattern('%23c2683f', '%23d99a78')
-  },
-  {
-    id: 'casa-moderno',
-    category: 'cha-casa',
-    name: 'Moderno',
-    pageBg: 'bg-gradient-to-b from-[#f3f1ec] to-white',
-    titleColor: 'text-[#4a4136]',
-    accent: '#a86a2e',
-    cardClass: 'bg-white/90 backdrop-blur ring-1 ring-[#e0d8c8]',
-    pattern: confettiPattern('%23a86a2e', '%23c89a5e')
+    pattern: dotsPattern('%23c2683f', '%23d99a78'),
+    HeroArt: archDecoHero('#c2683f', '#d99a78')
   },
 
   // ---- Aniversário (adulto) ----------------------------------------------
@@ -1174,17 +1267,8 @@ export const THEMES: Theme[] = [
     titleColor: 'text-[#2c3a5a]',
     accent: '#c2a14a',
     cardClass: 'bg-white/90 backdrop-blur ring-1 ring-[#cfd6e4]',
-    pattern: confettiPattern('%23c2a14a', '%232c3a5a')
-  },
-  {
-    id: 'aniv-moderno',
-    category: 'aniversario',
-    name: 'Moderno',
-    pageBg: 'bg-gradient-to-b from-[#f6f3f1] to-white',
-    titleColor: 'text-[#3f3a36]',
-    accent: '#e2574c',
-    cardClass: 'bg-white/90 backdrop-blur ring-1 ring-[#e4dcd6]',
-    pattern: dotsPattern('%23e2574c', '%23f0a59e')
+    pattern: confettiPattern('%23c2a14a', '%232c3a5a'),
+    HeroArt: confettiHero('#c2a14a', '#2c3a5a')
   },
   {
     id: 'aniv-noite',
@@ -1194,7 +1278,8 @@ export const THEMES: Theme[] = [
     titleColor: 'text-[#3f3460]',
     accent: '#8b4ad8',
     cardClass: 'bg-white/90 backdrop-blur ring-1 ring-[#d6ccec]',
-    pattern: confettiPattern('%238b4ad8', '%23c08ae0')
+    pattern: confettiPattern('%238b4ad8', '%23c08ae0'),
+    HeroArt: celestialHero('#8b4ad8', '#c08ae0')
   },
   {
     id: 'aniv-tropical',
@@ -1204,17 +1289,8 @@ export const THEMES: Theme[] = [
     titleColor: 'text-[#3f5a36]',
     accent: '#db6a4a',
     cardClass: 'bg-white/90 backdrop-blur ring-1 ring-[#d4e2c8]',
-    pattern: leavesPattern('%233f7d4e', '%23db6a4a')
-  },
-  {
-    id: 'aniv-pessego',
-    category: 'aniversario',
-    name: 'Pêssego',
-    pageBg: 'bg-gradient-to-b from-[#fdf0e8] to-white',
-    titleColor: 'text-[#7a4a30]',
-    accent: '#e08a5a',
-    cardClass: 'bg-white/90 backdrop-blur ring-1 ring-[#f2d8c4]',
-    pattern: confettiPattern('%23e08a5a', '%23f0b58e')
+    pattern: leavesPattern('%233f7d4e', '%23db6a4a'),
+    HeroArt: botanicalArchHero('#3f7d4e', '#db6a4a')
   },
   {
     id: 'aniv-blacktie',
@@ -1224,7 +1300,8 @@ export const THEMES: Theme[] = [
     titleColor: 'text-[#33302a]',
     accent: '#b89030',
     cardClass: 'bg-white/90 backdrop-blur ring-1 ring-[#ddd8cc]',
-    pattern: confettiPattern('%23b89030', '%2333302a')
+    pattern: confettiPattern('%23b89030', '%2333302a'),
+    HeroArt: confettiHero('#b89030', '#33302a')
   },
   {
     id: 'aniv-festa',
@@ -1234,10 +1311,11 @@ export const THEMES: Theme[] = [
     titleColor: 'text-[#7a3a5a]',
     accent: '#e24b8a',
     cardClass: 'bg-white/90 backdrop-blur ring-1 ring-[#f2d0e0]',
-    pattern: confettiPattern('%23e24b8a', '%23f0a5c4')
+    pattern: confettiPattern('%23e24b8a', '%23f0a5c4'),
+    HeroArt: confettiHero('#e24b8a', '#f0a5c4')
   },
 
-  // ---- Infantil (os 7 melhores, com as artes originais) -------------------
+  // ---- Infantil (os 5 melhores, com as artes originais) -------------------
   {
     id: 'unicornio',
     category: 'infantil',
@@ -1287,6 +1365,25 @@ export const THEMES: Theme[] = [
     Decoration: DinoDeco
   },
   {
+    id: 'piratas',
+    category: 'infantil',
+    name: 'Aventura Pirata',
+    pageBg: 'bg-gradient-to-b from-amber-100 via-orange-50 to-cyan-50',
+    titleColor: 'text-amber-900',
+    accent: '#92400e',
+    cardClass: 'bg-white/90 backdrop-blur ring-1 ring-amber-200',
+    pattern: compassPattern('%2392400e', '%23fbbf24'),
+    HeroArt: PiratasHero,
+    Decoration: PirateDeco
+  }
+];
+
+/**
+ * Temas antigos que saíram do picker mas ainda são usados por eventos já criados.
+ * Não aparecem na seleção; servem só pra `getTheme` não quebrar a aparência deles.
+ */
+const LEGACY_THEMES: Theme[] = [
+  {
     id: 'reino-do-mar',
     category: 'infantil',
     name: 'Reino do Mar',
@@ -1310,25 +1407,6 @@ export const THEMES: Theme[] = [
     HeroArt: SafariHero,
     Decoration: LionDeco
   },
-  {
-    id: 'piratas',
-    category: 'infantil',
-    name: 'Aventura Pirata',
-    pageBg: 'bg-gradient-to-b from-amber-100 via-orange-50 to-cyan-50',
-    titleColor: 'text-amber-900',
-    accent: '#92400e',
-    cardClass: 'bg-white/90 backdrop-blur ring-1 ring-amber-200',
-    pattern: compassPattern('%2392400e', '%23fbbf24'),
-    HeroArt: PiratasHero,
-    Decoration: PirateDeco
-  }
-];
-
-/**
- * Temas antigos que saíram do picker mas ainda são usados por eventos já criados.
- * Não aparecem na seleção; servem só pra `getTheme` não quebrar a aparência deles.
- */
-const LEGACY_THEMES: Theme[] = [
   {
     id: 'infantil-rosa',
     category: 'infantil',
